@@ -42,7 +42,7 @@ class ClientesResource extends Resource
                 TextInput::make('apellido_materno'),
                 DatePicker::make('fecha_de_nacimiento')->required(),
                 TextInput::make('ci')->label('C.I.')->required(),
-                TextInput::make('telefono'),
+                TextInput::make('celular'),
                 TextInput::make('correo')->email(),
                 Select::make('sexo')->options([
                     'masculino' => 'Masculino',
