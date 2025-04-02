@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\ClientesResource\Pages;
 
 use App\Filament\Resources\ClientesResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
+
 
 class CreateClientes extends CreateRecord
 {
@@ -16,7 +16,17 @@ class CreateClientes extends CreateRecord
             $data['foto'] = str_replace('public/', '', $data['foto']);
         }
 
+        $data['saldo'] = max(0, $data['saldo']);
+        $data['total'] = max(0, $data['total']);
+        $data['casillero_monto'] = max(0, $data['casillero_monto']);
+        $data['a_cuenta'] = max(0, $data['a_cuenta']);
+
         return $data;
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 
 }
