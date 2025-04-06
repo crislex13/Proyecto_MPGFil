@@ -74,7 +74,9 @@ class ClientesResource extends Resource
                     ->label('ID del biométrico')
                     ->required()
                     ->disabled()
-                    ->dehydrated(),
+                    ->dehydrated()
+                    ->placeholder('Se llenará automáticamente con el C.I.'),
+
             ])->columns(2),
 
             Section::make('Salud y contacto de emergencia')->schema([
@@ -330,78 +332,76 @@ class ClientesResource extends Resource
                         ->modalCancelActionLabel('Cerrar')
                         ->color('info')
                         ->form(fn(Clientes $record) => [
-                            // Foto
-                            Placeholder::make('Foto')
-                                ->label('Foto del cliente')
-                                ->content(fn($record) => new HtmlString(
-                                    '<img src="' . asset('storage/' . $record->foto) . '" alt="Foto del cliente" style="width: 120px; height: 120px; object-fit: cover; border-radius: 100px;" />'
-                                ))
-                                ->columnSpanFull(),
 
-                            // Datos Personales
-                            Section::make('Datos Personales')->schema([
-                                TextInput::make('nombre')->default($record->nombre)->disabled(),
-                                TextInput::make('apellido_paterno')->default($record->apellido_paterno)->disabled(),
-                                TextInput::make('apellido_materno')->default($record->apellido_materno)->disabled(),
-                                TextInput::make('ci')->default($record->ci)->disabled(),
-                                DatePicker::make('fecha_de_nacimiento')->default($record->fecha_de_nacimiento)->disabled(),
-                                TextInput::make('telefono')->default($record->telefono)->disabled(),
-                                TextInput::make('correo')->default($record->correo)->disabled(),
-                                Placeholder::make('Sexo')->content($record->sexo)->columnSpanFull(),
-                                Placeholder::make('ID Biométrico')->content($record->biometrico_id)->columnSpanFull(),
-                            ]),
-
-                            // Salud y Emergencia
-                            Section::make('Salud y Contacto de Emergencia')->schema([
-                                Placeholder::make('Antecedentes Médicos')->content($record->antecedentes_medicos ?? 'Ninguno')->columnSpanFull(),
-                                Placeholder::make('Nombre de Emergencia')->content($record->contacto_emergencia_nombre ?? '-'),
-                                Placeholder::make('Parentesco')->content($record->contacto_emergencia_parentesco ?? '-'),
-                                Placeholder::make('Celular de Emergencia')->content($record->contacto_emergencia_celular ?? '-'),
-                            ]),
-
-                            // Plan y Disciplina
-                            Section::make('Plan y Disciplina')->schema([
-                                Placeholder::make('Plan')->content($record->plan?->nombre ?? '-'),
-                                Placeholder::make('Disciplina')->content($record->disciplina?->nombre ?? '-'),
-                                Placeholder::make('Fecha de Inicio')->content($record->fecha_inicio ?? '-'),
-                                Placeholder::make('Fecha Final')->content($record->fecha_final ?? '-'),
-                            ]),
-
-                            Section::make('Pagos y Estado')->schema([
-                                Placeholder::make('Precio del Plan')->content('Bs. ' . number_format($record->precio_plan, 2)),
-                                Placeholder::make('A Cuenta')->content('Bs. ' . number_format($record->a_cuenta, 2)),
-                                Placeholder::make('Saldo')->content('Bs. ' . number_format($record->saldo, 2)),
-                                Placeholder::make('Monto por Casillero')
-                                    ->content('Bs. ' . number_format($record->casillero_monto, 2))
-                                    ->helperText('Este monto representa el uso del casillero por parte del cliente.'),
-                                Placeholder::make('Total')->content('Bs. ' . number_format($record->total, 2)),
-                                Placeholder::make('Método de Pago')->content(ucfirst($record->metodo_pago)),
-                                Placeholder::make('Comprobante')->content(ucfirst($record->comprobante)),
-                                Placeholder::make('Estado del Cliente')
+                            Section::make('📸 Foto del Cliente')->schema([
+                                Placeholder::make('foto')
+                                    ->label('Foto')
                                     ->content(fn() => new HtmlString(
-                                        $record->estado === 'activo'
-                                        ? '<span style="color: green;">Activo</span>'
-                                        : '<span style="color: red;">Inactivo</span>'
+                                        '<div style="display: flex; justify-content: center;">
+                        <img src="' . asset('storage/' . $record->foto) . '" alt="Foto del cliente" style="width: 140px; height: 140px; object-fit: cover; border-radius: 100px; border: 2px solid #ccc;" />
+                    </div>'
                                     ))
                                     ->columnSpanFull(),
                             ]),
 
-                            Section::make('Estado de Deuda')->schema([
-                                Placeholder::make('Deuda')
+                            Section::make('🧍 Datos Personales')->schema([
+                                TextInput::make('nombre')->default($record->nombre)->disabled()->placeholder('Nombre completo'),
+                                TextInput::make('apellido_paterno')->default($record->apellido_paterno)->disabled()->placeholder('Apellido paterno'),
+                                TextInput::make('apellido_materno')->default($record->apellido_materno)->disabled()->placeholder('Apellido materno'),
+                                TextInput::make('ci')->default($record->ci)->disabled()->placeholder('Número de C.I.'),
+                                DatePicker::make('fecha_de_nacimiento')->default($record->fecha_de_nacimiento)->disabled()->placeholder('Fecha de nacimiento'),
+                                TextInput::make('telefono')->default($record->telefono)->disabled()->placeholder('Celular'),
+                                TextInput::make('correo')->default($record->correo)->disabled()->placeholder('Correo electrónico'),
+                                Placeholder::make('sexo')->label('Sexo')->content($record->sexo)->columnSpanFull(),
+                                Placeholder::make('biometrico_id')->label('ID Biométrico')->content($record->biometrico_id)->columnSpanFull(),
+                            ])->columns(2),
+
+                            Section::make('🚨 Emergencias y Salud')->schema([
+                                Placeholder::make('antecedentes_medicos')->label('Antecedentes Médicos')->content($record->antecedentes_medicos ?? 'Ninguno')->columnSpanFull(),
+                                Placeholder::make('contacto_emergencia_nombre')->label('Nombre de Emergencia')->content($record->contacto_emergencia_nombre ?? '-'),
+                                Placeholder::make('contacto_emergencia_parentesco')->label('Parentesco')->content($record->contacto_emergencia_parentesco ?? '-'),
+                                Placeholder::make('contacto_emergencia_celular')->label('Celular')->content($record->contacto_emergencia_celular ?? '-'),
+                            ])->columns(2),
+
+                            Section::make('📅 Plan y Disciplina')->schema([
+                                Placeholder::make('plan')->label('Plan')->content($record->plan?->nombre ?? '-'),
+                                Placeholder::make('disciplina')->label('Disciplina')->content($record->disciplina?->nombre ?? '-'),
+                                Placeholder::make('fecha_inicio')->label('Fecha de Inicio')->content($record->fecha_inicio ?? '-'),
+                                Placeholder::make('fecha_final')->label('Fecha Final')->content($record->fecha_final ?? '-'),
+                            ])->columns(2),
+
+                            Section::make('💳 Pagos')->schema([
+                                Placeholder::make('precio_plan')->label('Precio del Plan')->content('Bs. ' . number_format($record->precio_plan, 2)),
+                                Placeholder::make('a_cuenta')->label('A Cuenta')->content('Bs. ' . number_format($record->a_cuenta, 2)),
+                                Placeholder::make('saldo')->label('Saldo')->content('Bs. ' . number_format($record->saldo, 2)),
+                                Placeholder::make('casillero_monto')->label('Monto por Casillero')->content('Bs. ' . number_format($record->casillero_monto, 2)),
+                                Placeholder::make('total')->label('Total')->content('Bs. ' . number_format($record->total, 2)),
+                                Placeholder::make('metodo_pago')->label('Método de Pago')->content(ucfirst($record->metodo_pago)),
+                                Placeholder::make('comprobante')->label('Comprobante')->content(ucfirst($record->comprobante)),
+                                Placeholder::make('estado')->label('Estado del Cliente')->content(fn() => new HtmlString(
+                                    $record->estado === 'activo'
+                                    ? '<span style="color: green; font-weight: bold;">🟢 Activo</span>'
+                                    : '<span style="color: red; font-weight: bold;">🔴 Inactivo</span>'
+                                ))->columnSpanFull(),
+                            ])->columns(2),
+
+                            Section::make('💼 Estado de Deuda')->schema([
+                                Placeholder::make('deuda')
+                                    ->label('Deuda')
                                     ->content(fn() => new HtmlString(
                                         $record->saldo > 0
-                                        ? '<span style="color: red;">Pendiente</span>'
-                                        : '<span style="color: green;">Sin deuda</span>'
-                                    ))
-                                    ->columnSpanFull(),
+                                        ? '<span style="color: red; font-weight: bold;">❌ Pendiente</span>'
+                                        : '<span style="color: green; font-weight: bold;">✔️ Sin deuda</span>'
+                                    ))->columnSpanFull(),
 
-                                Placeholder::make('Bloqueado por Deuda')
+                                Placeholder::make('bloqueado_por_deuda')
+                                    ->label('Bloqueado por Deuda')
                                     ->content(fn() => new HtmlString(
                                         $record->bloqueado_por_deuda
                                         ? '<span style="color: red;">Sí</span>'
                                         : '<span style="color: green;">No</span>'
                                     ))
-                                    ->helperText('Este campo indica si el cliente fue bloqueado por falta de pago.')
+                                    ->helperText('Indica si fue bloqueado por falta de pago.')
                                     ->columnSpanFull(),
                             ]),
                         ])

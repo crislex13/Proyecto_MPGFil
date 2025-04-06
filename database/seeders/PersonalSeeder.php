@@ -1,0 +1,136 @@
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
+
+class PersonalSeeder extends Seeder
+{
+    public function run(): void
+    {
+        DB::table('personals')->insert([
+            [
+                'nombre' => 'Carlos',
+                'apellido_paterno' => 'Gutiérrez',
+                'apellido_materno' => 'López',
+                'ci' => '12345678',
+                'telefono' => '78945612',
+                'direccion' => 'Av. Siempre Viva 123',
+                'fecha_de_nacimiento' => '1985-06-15',
+                'correo' => 'carlos.gutierrez@example.com',
+                'cargo' => 'Instructor',
+                'biometrico_id' => 101,
+                'horario' => json_encode([
+                    'lunes' => ['entrada' => '07:00', 'salida' => '13:00'],
+                    'miércoles' => ['entrada' => '07:00', 'salida' => '13:00'],
+                    'viernes' => ['entrada' => '07:00', 'salida' => '13:00'],
+                ]),
+                'salario' => 3500.00,
+                'fecha_contratacion' => Carbon::now()->subYears(2)->toDateString(),
+                'estado' => 'activo',
+                'foto' => null,
+                'observaciones' => 'Entrenador principal de musculación.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nombre' => 'María',
+                'apellido_paterno' => 'Fernández',
+                'apellido_materno' => 'Suárez',
+                'ci' => '23456789',
+                'telefono' => '78451236',
+                'direccion' => 'Calle Libertad 45',
+                'fecha_de_nacimiento' => '1990-03-20',
+                'correo' => 'maria.fernandez@example.com',
+                'cargo' => 'Recepcionista',
+                'biometrico_id' => 102,
+                'horario' => json_encode([
+                    'lunes' => ['entrada' => '08:00', 'salida' => '14:00'],
+                    'martes' => ['entrada' => '08:00', 'salida' => '14:00'],
+                    'miércoles' => ['entrada' => '08:00', 'salida' => '14:00'],
+                ]),
+                'salario' => 2500.00,
+                'fecha_contratacion' => Carbon::now()->subYear()->toDateString(),
+                'estado' => 'activo',
+                'foto' => null,
+                'observaciones' => 'Atención al cliente.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nombre' => 'Luis',
+                'apellido_paterno' => 'Pérez',
+                'apellido_materno' => 'Martínez',
+                'ci' => '34567890',
+                'telefono' => '76541234',
+                'direccion' => 'Zona Norte, Calle 10',
+                'fecha_de_nacimiento' => '1988-11-05',
+                'correo' => 'luis.perez@example.com',
+                'cargo' => 'Limpieza',
+                'biometrico_id' => 103,
+                'horario' => json_encode([
+                    'lunes' => ['entrada' => '06:00', 'salida' => '12:00'],
+                    'jueves' => ['entrada' => '06:00', 'salida' => '12:00'],
+                    'sábado' => ['entrada' => '06:00', 'salida' => '12:00'],
+                ]),
+                'salario' => 2000.00,
+                'fecha_contratacion' => Carbon::now()->subMonths(10)->toDateString(),
+                'estado' => 'activo',
+                'foto' => null,
+                'observaciones' => 'Limpieza y mantenimiento.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nombre' => 'Ana',
+                'apellido_paterno' => 'Rojas',
+                'apellido_materno' => 'Quispe',
+                'ci' => '45678901',
+                'telefono' => '76549812',
+                'direccion' => 'Av. América Oeste',
+                'fecha_de_nacimiento' => '1992-12-25',
+                'correo' => 'ana.rojas@example.com',
+                'cargo' => 'Instructora',
+                'biometrico_id' => 104,
+                'horario' => json_encode([
+                    'martes' => ['entrada' => '10:00', 'salida' => '16:00'],
+                    'jueves' => ['entrada' => '10:00', 'salida' => '16:00'],
+                    'sábado' => ['entrada' => '10:00', 'salida' => '14:00'],
+                ]),
+                'salario' => 3300.00,
+                'fecha_contratacion' => Carbon::now()->subMonths(6)->toDateString(),
+                'estado' => 'activo',
+                'foto' => null,
+                'observaciones' => 'Especializada en yoga.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'nombre' => 'Pedro',
+                'apellido_paterno' => 'Cruz',
+                'apellido_materno' => 'García',
+                'ci' => '56789012',
+                'telefono' => '76451289',
+                'direccion' => 'Barrio Central',
+                'fecha_de_nacimiento' => '1980-07-08',
+                'correo' => 'pedro.cruz@example.com',
+                'cargo' => 'Seguridad',
+                'biometrico_id' => 105,
+                'horario' => json_encode([
+                    'lunes' => ['entrada' => '18:00', 'salida' => '22:00'],
+                    'miércoles' => ['entrada' => '18:00', 'salida' => '22:00'],
+                    'viernes' => ['entrada' => '18:00', 'salida' => '22:00'],
+                ]),
+                'salario' => 2800.00,
+                'fecha_contratacion' => Carbon::now()->subYears(3)->toDateString(),
+                'estado' => 'activo',
+                'foto' => null,
+                'observaciones' => 'Turno nocturno de seguridad.',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+    }
+}
