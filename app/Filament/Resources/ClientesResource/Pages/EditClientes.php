@@ -17,36 +17,18 @@ class EditClientes extends EditRecord
         ];
     }
 
-    protected function mutateFormDataBeforeCreate(array $data): array
+    protected function mutateFormDataBeforeSave(array $data): array
     {
+        // Asegura que el path de la imagen se guarde correctamente
         if (isset($data['foto'])) {
             $data['foto'] = str_replace('public/', '', $data['foto']);
         }
-
-        // Asegurarte que el campo esté presente
-        $data['casillero_monto'] = $data['casillero_monto'] ?? 0;
 
         return $data;
     }
 
     protected function getRedirectUrl(): string
     {
-        return $this->getResource()::getUrl('index'); // Redirige a la tabla después de guardar
+        return $this->getResource()::getUrl('index');
     }
-
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        if (empty($data['fecha_final']) && !empty($data['fecha_inicio']) && !empty($data['plan_id'])) {
-            $plan = \App\Models\Plan::find($data['plan_id']);
-            if ($plan) {
-                $data['fecha_final'] = \Carbon\Carbon::parse($data['fecha_inicio'])
-                    ->addDays($plan->duracion_dias)
-                    ->subDay()
-                    ->toDateString();
-            }
-        }
-
-        return $data;
-    }
-
 }

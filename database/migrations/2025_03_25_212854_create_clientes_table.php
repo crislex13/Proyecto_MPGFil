@@ -60,7 +60,6 @@ return new class extends Migration {
             $table->enum('estado', ['activo', 'inactivo'])->default('activo');
             $table->boolean('bloqueado_por_deuda')->default(false);
 
-
             $table->timestamps();
         });
     }

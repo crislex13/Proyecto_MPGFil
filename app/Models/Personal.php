@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 
 class Personal extends Model
@@ -32,4 +33,15 @@ class Personal extends Model
         'fecha_contratacion' => 'date',
         'horario' => 'array',
     ];
+
+    public function getNombreCompletoAttribute(): string
+    {
+        return "{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}";
+    }
+
+    public function getFotoUrlAttribute(): string
+    {
+        return $this->foto ? Storage::url($this->foto) : '/default-user.png';
+    }
+
 }
