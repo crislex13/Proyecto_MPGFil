@@ -22,25 +22,36 @@ class PlanResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('Información del Plan')->schema([
-                TextInput::make('nombre')
-                    ->label('Nombre del plan')
-                    ->required()
-                    ->maxLength(255),
+            Section::make('📋 Información del Plan')
+                ->description('Define los datos básicos del plan disponible en el gimnasio.')
+                ->schema([
+                    TextInput::make('nombre')
+                        ->label('Nombre del plan')
+                        ->required()
+                        ->maxLength(255)
+                        ->placeholder('Ej: Plan Mensual'),
 
-                TextInput::make('duracion_dias')
-                    ->label('Duración (días)')
-                    ->numeric()
-                    ->required(),
-            ])
+                    TextInput::make('duracion_dias')
+                        ->label('Duración del plan (en días)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(1)
+                        ->placeholder('Ej: 30'),
+                ])->columns(2)
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('nombre')->sortable()->searchable(),
-            TextColumn::make('duracion_dias')->label('Duración (días)')->sortable(),
+            TextColumn::make('nombre')
+                ->label('📦 Nombre del plan')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('duracion_dias')
+                ->label('⏳ Duración (días)')
+                ->sortable(),
         ]);
     }
 

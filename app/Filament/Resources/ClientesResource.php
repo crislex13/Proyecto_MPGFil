@@ -107,9 +107,22 @@ class ClientesResource extends Resource
                 ->searchable()
                 ->sortable(),
 
-            TextColumn::make('apellido_paterno')->searchable(),
-            TextColumn::make('apellido_materno')->searchable(),
-            TextColumn::make('correo')->searchable(),
+            TextColumn::make('apellido_paterno')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('apellido_materno')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('ci')
+                ->label('C.I.')
+                ->sortable()
+                ->searchable(),
+
+            TextColumn::make('correo')
+                ->searchable(),
+
             TextColumn::make('telefono'),
 
             BadgeColumn::make('estado')

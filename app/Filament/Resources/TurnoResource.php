@@ -17,6 +17,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Notifications\Notification;
 use Carbon\Carbon;
 use Filament\Forms\Components\Placeholder;
+use Illuminate\Database\Eloquent\Builder;
 
 class TurnoResource extends Resource
 {
@@ -33,6 +34,25 @@ class TurnoResource extends Resource
                 ->description('Defina los horarios y estado del turno de trabajo o atención')
                 ->icon('heroicon-o-clock')
                 ->schema([
+
+                    Select::make('personal_id')
+                        ->label('Instructor')
+                        ->relationship(
+                            name: 'personal',
+                            titleAttribute: 'nombre_completo',
+                            modifyQueryUsing: fn (Builder $query, $search) => $query->where(function ($q) use ($search) {
+                                $q->where('nombre', 'like', "%$search%")
+                                    ->orWhere('apellido_paterno', 'like', "%$search%")
+                                    ->orWhere('apellido_materno', 'like', "%$search%");
+                            })
+                        )
+                        ->getOptionLabelFromRecordUsing(fn($record) => $record->nombre_completo)
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->placeholder('Seleccione al instructor'),
+
+
                     TextInput::make('nombre')
                         ->label('Nombre del Turno')
                         ->placeholder('Ejemplo: Mañana, Tarde, Noche')
@@ -132,6 +152,13 @@ class TurnoResource extends Resource
     {
         return $table
             ->columns([
+
+                TextColumn::make('personal.nombre_completo')
+                    ->label('Instructor')
+                    ->searchable(['personals.nombre', 'personals.apellido_paterno', 'personals.apellido_materno']) // <- ✅ tabla real
+                    ->icon('heroicon-o-user-circle')
+                    ->sortable(),
+
                 TextColumn::make('nombre')
                     ->label('Nombre del Turno')
                     ->icon('heroicon-o-identification')

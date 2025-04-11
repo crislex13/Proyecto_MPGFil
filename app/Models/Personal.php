@@ -21,7 +21,6 @@ class Personal extends Model
         'cargo',
         'biometrico_id',
         'horario',
-        'salario',
         'fecha_contratacion',
         'estado',
         'foto',
@@ -42,6 +41,11 @@ class Personal extends Model
     public function getFotoUrlAttribute(): string
     {
         return $this->foto ? Storage::url($this->foto) : '/default-user.png';
+    }
+
+    public function turnos()
+    {
+        return $this->hasMany(Turno::class);
     }
 
 }

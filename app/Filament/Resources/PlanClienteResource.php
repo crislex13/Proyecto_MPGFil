@@ -25,6 +25,7 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\HtmlString;
+use App\Filament\Resources\PlanClienteResource\RelationManagers\SesionesAdicionalesRelationManager;
 
 class PlanClienteResource extends Resource
 {
@@ -38,9 +39,11 @@ class PlanClienteResource extends Resource
     {
         return $form->schema([
             Select::make('cliente_id')
-                ->relationship('cliente', 'nombre')
+                ->label('Cliente')
+                ->options(Clientes::all()->pluck('nombre_completo', 'id'))
                 ->searchable()
-                ->required(),
+                ->required()
+                ->placeholder('Seleccione el cliente'),
 
             Select::make('plan_id')
                 ->relationship('plan', 'nombre')
@@ -100,16 +103,16 @@ class PlanClienteResource extends Resource
             TextColumn::make('disciplina.nombre'),
 
             TextColumn::make('fecha_inicio')
-            ->date(),
+                ->date(),
 
             TextColumn::make('fecha_final')
-            ->date(),
+                ->date(),
 
             TextColumn::make('total')
-            ->money('BOB'),
+                ->money('BOB'),
 
             TextColumn::make('saldo')
-            ->money('BOB'),
+                ->money('BOB'),
 
             TextColumn::make('metodo_pago'),
 
@@ -122,7 +125,7 @@ class PlanClienteResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            SesionesAdicionalesRelationManager::class,
         ];
     }
 

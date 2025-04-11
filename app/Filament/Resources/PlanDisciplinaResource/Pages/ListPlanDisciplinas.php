@@ -5,6 +5,7 @@ namespace App\Filament\Resources\PlanDisciplinaResource\Pages;
 use App\Filament\Resources\PlanDisciplinaResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Pages\Actions\CreateAction;
 
 class ListPlanDisciplinas extends ListRecords
 {
@@ -13,7 +14,8 @@ class ListPlanDisciplinas extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make()
+                ->label('Registrar Precio') 
         ];
     }
 }

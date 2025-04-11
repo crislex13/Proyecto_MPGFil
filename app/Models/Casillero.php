@@ -9,12 +9,14 @@ class Casillero extends Model
 {
     protected $fillable = [
         'numero',
-        'ubicacion',
         'estado',
         'cliente_id',
         'fecha_entrega_llave',
         'fecha_final_llave',
         'reposicion_llave',
+        'costo_mensual',
+        'total_reposiciones',
+        'monto_reposiciones',
     ];
 
     public function cliente(): BelongsTo

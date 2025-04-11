@@ -3,31 +3,21 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CasilleroResource\Pages;
-use App\Filament\Resources\CasilleroResource\RelationManagers;
 use App\Models\Casillero;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use App\Models\PlanCliente;
 use Carbon\Carbon;
-use App\Models\Clientes;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\HtmlString;
-use Filament\Forms\Get;
 use Filament\Forms\Set;
+use App\Models\Clientes;
+use Filament\Forms\Components\Section;
 
 
 
@@ -42,64 +32,79 @@ class CasilleroResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            TextInput::make('numero')
-                ->required()
-                ->unique(ignoreRecord: true) // <- ESTO evita que dispare la validación al editar el mismo casillero
-                ->placeholder('Ej: C-001'),
-            TextInput::make('ubicacion')->nullable(),
-            Select::make('estado')->options([
-                'disponible' => 'Disponible',
-                'ocupado' => 'Ocupado',
-                'mantenimiento' => 'Mantenimiento',
-            ])->required(),
+            Section::make('Datos del Casillero')->schema([
+                Select::make('cliente_id')
+                    ->label('Cliente asignado')
+                    ->options(Clientes::all()->pluck('nombre_completo', 'id'))
+                    ->searchable()
+                    ->placeholder('Seleccione un cliente')
+                    ->nullable(),
 
-            Select::make('cliente_id')
-                ->relationship('cliente', 'nombre')
-                ->searchable()
-                ->label('Cliente asignado')
-                ->nullable(),
+                TextInput::make('numero')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->placeholder('Ej: C-001')
+                    ->label('Número de casillero'),
 
-            DatePicker::make('fecha_entrega_llave')
-                ->label('Fecha de inicio de uso')
-                ->required()
-                ->reactive()
-                ->afterStateUpdated(function ($state, Set $set) {
-                    if ($state) {
-                        $fechaFinal = Carbon::parse($state)->addDays(29);
-                        $set('fecha_final_llave', $fechaFinal->toDateString());
-                    }
-                }),
+                Select::make('estado')
+                    ->label('Estado')
+                    ->options([
+                        'disponible' => 'Disponible',
+                        'ocupado' => 'Ocupado',
+                        'mantenimiento' => 'Mantenimiento',
+                    ])
+                    ->required()
+                    ->placeholder('Seleccione el estado actual'),
 
-            DatePicker::make('fecha_final_llave')
-                ->label('Fecha final de uso')
-                ->disabled()
-                ->dehydrated()
-                ->placeholder('Se calculará automáticamente'),
+                TextInput::make('costo_mensual')
+                    ->label('Costo mensual (Bs.)')
+                    ->numeric()
+                    ->default(40)
+                    ->disabled()
+                    ->dehydrated()
+                    ->placeholder('Costo fijo por 30 días'),
 
-            TextInput::make('costo_mensual')
-                ->label('Costo mensual')
-                ->numeric()
-                ->default(40)
-                ->disabled()
-                ->dehydrated(),
+                TextInput::make('total_reposiciones')
+                    ->label('Reposiciones realizadas')
+                    ->numeric()
+                    ->default(0)
+                    ->minValue(0)
+                    ->live(onBlur: true)
+                    ->dehydrated()
+                    ->placeholder('Cantidad de llaves perdidas')
+                    ->afterStateUpdated(function ($state, Set $set) {
+                        $costoReposicion = 10;
+                        $set('monto_reposiciones', $state * $costoReposicion);
+                    }),
 
-            TextInput::make('total_reposiciones')
-                ->label('Reposiciones realizadas')
-                ->numeric()
-                ->default(0)
-                ->minValue(0)
-                ->live(onBlur: true)
-                ->afterStateUpdated(function ($state, Set $set) {
-                    $costoReposicion = 20; // ← puedes parametrizarlo
-                    $set('monto_reposiciones', $state * $costoReposicion);
-                }),
+                TextInput::make('monto_reposiciones')
+                    ->label('Monto por reposiciones (Bs.)')
+                    ->numeric()
+                    ->default(0)
+                    ->disabled()
+                    ->dehydrated()
+                    ->placeholder('Se calcula automáticamente'),
 
-            TextInput::make('monto_reposiciones')
-                ->label('Monto total por reposiciones')
-                ->numeric()
-                ->default(0)
-                ->disabled()
-                ->dehydrated(),
+                DatePicker::make('fecha_entrega_llave')
+                    ->label('Fecha de inicio de uso')
+                    ->required()
+                    ->reactive()
+                    ->afterStateUpdated(function ($state, Set $set) {
+                        if ($state) {
+                            $fechaFinal = Carbon::parse($state)->addDays(29);
+                            $set('fecha_final_llave', $fechaFinal->toDateString());
+                        }
+                    })
+                    ->placeholder('Seleccionar fecha de entrega'),
+
+                DatePicker::make('fecha_final_llave')
+                    ->label('Fecha de vencimiento')
+                    ->disabled()
+                    ->dehydrated()
+                    ->placeholder('Se calculará automáticamente'),
+            ])->columns(2)
+                ->description('Complete los datos del alquiler de casillero')
+                ->collapsible()
         ]);
     }
 
@@ -112,11 +117,9 @@ class CasilleroResource extends Resource
                 ->circular()
                 ->height(40)
                 ->width(40)
-                ->getStateUsing(function ($record) {
-                    return $record->cliente?->foto
-                        ? asset('storage/' . $record->cliente->foto)
-                        : asset('images/default-locker.png');
-                }),
+                ->getStateUsing(fn($record) => $record->cliente?->foto
+                    ? asset('storage/' . $record->cliente->foto)
+                    : asset('images/default-locker.png')),
 
             TextColumn::make('nombre_cliente')
                 ->label('Cliente')
@@ -135,41 +138,21 @@ class CasilleroResource extends Resource
                 ->sortable(),
 
             BadgeColumn::make('estado')
+                ->label('Estado')
                 ->colors([
                     'success' => 'disponible',
                     'warning' => 'ocupado',
                     'danger' => 'mantenimiento',
                 ])
+                ->icons([
+                    'heroicon-o-check-circle',
+                    'heroicon-o-exclamation-triangle',
+                    'heroicon-o-wrench-screwdriver',
+                ])
                 ->sortable(),
-
-            TextColumn::make('fecha_entrega_llave')
-                ->date()
-                ->label('Entrega')
-                ->sortable(),
-
-            TextColumn::make('fecha_final_llave')
-                ->label('Vence')
-                ->date('M d, Y')
-                ->sortable(),
-
-            TextColumn::make('dias_restantes')
-                ->label('Días restantes')
-                ->formatStateUsing(function ($state, $record) {
-                    if (!$record->fecha_final_llave) {
-                        return '—';
-                    }
-
-                    $dias = Carbon::parse(now())->diffInDays(Carbon::parse($record->fecha_final_llave), false);
-
-                    if ($dias < 0) {
-                        return "Venció hace " . abs($dias) . " días";
-                    }
-
-                    return $dias . ' días';
-                }),
 
             TextColumn::make('costo_mensual')
-                ->label('Costo')
+                ->label('Costo mensual')
                 ->money('BOB')
                 ->sortable(),
 
@@ -180,6 +163,29 @@ class CasilleroResource extends Resource
             TextColumn::make('monto_reposiciones')
                 ->label('Bs Reposición')
                 ->money('BOB')
+                ->sortable(),
+
+            TextColumn::make('fecha_entrega_llave')
+                ->label('Entrega')
+                ->date('d/m/Y')
+                ->sortable(),
+
+            TextColumn::make('fecha_final_llave')
+                ->label('Vence')
+                ->date('d/m/Y')
+                ->sortable(),
+
+            TextColumn::make('dias_restantes')
+                ->label('Días restantes')
+                ->getStateUsing(function ($record) {
+                    if (!$record->fecha_final_llave)
+                        return '—';
+
+                    $dias = Carbon::now()->diffInDays(Carbon::parse($record->fecha_final_llave), false);
+                    return $dias < 0
+                        ? "Venció hace " . abs(intval($dias)) . " días"
+                        : intval($dias) . ' días';
+                })
                 ->sortable(),
 
         ])->actions([

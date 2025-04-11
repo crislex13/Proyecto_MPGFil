@@ -32,4 +32,10 @@ class Turno extends Model
         });
     }
 
+
+    public function personal()
+    {
+        return $this->belongsTo(Personal::class);
+    }
+
 }

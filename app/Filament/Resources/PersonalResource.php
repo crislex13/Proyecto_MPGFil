@@ -34,55 +34,42 @@ class PersonalResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('Información Personal')
-                ->description('Datos personales del trabajador')
+            Section::make('🧍 Datos Personales')
+                ->description('Información básica del personal')
                 ->schema([
                     TextInput::make('nombre')
                         ->required()
                         ->label('Nombre')
-                        ->placeholder('Ingrese el nombre'),
-
+                        ->placeholder('Ej: Carlos'),
                     TextInput::make('apellido_paterno')
                         ->required()
                         ->label('Apellido Paterno')
-                        ->placeholder('Ingrese el apellido paterno'),
-
+                        ->placeholder('Ej: Pérez'),
                     TextInput::make('apellido_materno')
                         ->required()
                         ->label('Apellido Materno')
-                        ->placeholder('Ingrese el apellido materno'),
-
+                        ->placeholder('Ej: Gutiérrez'),
                     DatePicker::make('fecha_de_nacimiento')
                         ->required()
-                        ->label('Fecha de nacimiento')
-                        ->placeholder('Seleccione la fecha de nacimiento'),
-
+                        ->label('Fecha de nacimiento'),
                     TextInput::make('ci')
-                        ->label('Carnet de Identidad')
+                        ->label('C.I.')
                         ->required()
                         ->unique(ignoreRecord: true)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn(Get $get, Set $set, $state) => $set('biometrico_id', $state))
-                        ->placeholder('Ingrese el número de C.I.'),
-
+                        ->afterStateUpdated(fn(Get $get, Set $set, $state) => $set('biometrico_id', $state)),
                     TextInput::make('telefono')
-                        ->tel()
-                        ->maxLength(15)
                         ->label('Teléfono')
-                        ->placeholder('Ingrese el número de celular'),
-
+                        ->tel()
+                        ->placeholder('Ej: 76543210'),
                     TextInput::make('direccion')
-                        ->maxLength(255)
                         ->label('Dirección')
-                        ->placeholder('Ingrese la dirección actual'),
-
+                        ->placeholder('Ej: Av. América Oeste'),
                     TextInput::make('correo')
                         ->email()
                         ->required()
                         ->unique(ignoreRecord: true)
-                        ->label('Correo Electrónico')
-                        ->placeholder('Ingrese el correo electrónico personal'),
-
+                        ->label('Correo'),
                     FileUpload::make('foto')
                         ->label('Foto del personal')
                         ->image()
@@ -90,36 +77,21 @@ class PersonalResource extends Resource
                         ->disk('public')
                         ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName()))
                         ->previewable(),
-                ])
-                ->columns(2),
+                ])->columns(2),
 
-            Section::make('Información Laboral')
-                ->description('Datos del puesto y condiciones laborales')
+            Section::make('🏢 Datos Laborales')
+                ->description('Información laboral y administrativa')
                 ->schema([
                     TextInput::make('cargo')
-                        ->required()
-                        ->label('Cargo o puesto')
-                        ->placeholder('Ingrese el cargo que ocupa'),
-
+                        ->required()->label('Cargo')
+                        ->placeholder('Ej: Instructor, Recepcionista'),
                     TextInput::make('biometrico_id')
                         ->label('ID Biométrico')
                         ->disabled()
-                        ->dehydrated()
-                        ->required()
-                        ->placeholder('Se llenará automáticamente con el C.I.'),
-
+                        ->required(),
                     DatePicker::make('fecha_contratacion')
                         ->required()
-                        ->label('Fecha de contratación')
-                        ->placeholder('Seleccione la fecha de inicio laboral'),
-
-                    TextInput::make('salario')
-                        ->required()
-                        ->numeric()
-                        ->minValue(0)
-                        ->label('Salario (Bs.)')
-                        ->placeholder('Ingrese el salario mensual'),
-
+                        ->label('Fecha de contratación'),
                     Select::make('estado')
                         ->label('Estado')
                         ->options([
@@ -128,52 +100,57 @@ class PersonalResource extends Resource
                             'baja' => 'De baja',
                         ])
                         ->default('activo')
-                        ->required()
-                        ->placeholder('Seleccione el estado actual del personal'),
-
+                        ->required(),
                     Textarea::make('observaciones')
-                        ->rows(3)
                         ->label('Observaciones')
-                        ->placeholder('Escriba notas importantes sobre el personal'),
-                ])
-                ->columns(2),
+                        ->placeholder('Notas adicionales...')
+                        ->rows(3),
+                ])->columns(2),
         ]);
     }
 
 
     public static function table(Table $table): Table
     {
-        return $table
-            ->columns([
-                ImageColumn::make('foto')
+        return $table->columns([
+            ImageColumn::make('foto')
                 ->label('Foto')
                 ->circular()
                 ->height(50),
-                TextColumn::make('nombre')
-                ->searchable(),
-                TextColumn::make('apellido_paterno')
-                ->searchable(),
-                TextColumn::make('apellido_materno')
-                ->searchable(),
-                TextColumn::make('cargo')
+
+            TextColumn::make('nombre')
+                ->searchable()
                 ->sortable(),
-                TextColumn::make('ci')->label('C.I.')
-                ->searchable(),
-                TextColumn::make('correo')
-                ->searchable(),
-                TextColumn::make('telefono'),
-                TextColumn::make('salario')
-                ->money('BOB')
+
+            TextColumn::make('apellido_paterno')
+                ->searchable()
                 ->sortable(),
-                BadgeColumn::make('estado')
-                    ->label('Estado')
-                    ->colors([
-                        'success' => 'activo',
-                        'warning' => 'inactivo',
-                        'danger' => 'baja',
-                    ])
-                    ->sortable(),
-            ])
+
+            TextColumn::make('apellido_materno')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('cargo')
+                ->sortable(),
+
+            TextColumn::make('ci')
+                ->label('C.I.')
+                ->searchable(),
+
+            TextColumn::make('correo')
+                ->searchable(),
+
+            TextColumn::make('telefono'),
+
+            BadgeColumn::make('estado')
+                ->label('Estado')
+                ->colors([
+                    'success' => 'activo',
+                    'warning' => 'inactivo',
+                    'danger' => 'baja',
+                ])
+                ->sortable(),
+        ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

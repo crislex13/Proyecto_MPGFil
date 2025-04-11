@@ -17,37 +17,52 @@ class DisciplinaResource extends Resource
     protected static ?string $model = Disciplina::class;
     protected static ?string $navigationIcon = 'heroicon-o-bolt';
     protected static ?string $navigationGroup = 'Catálogos';
+    protected static ?string $navigationLabel = 'Disciplinas';
+    protected static ?string $pluralModelLabel = 'Disciplinas';
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('Datos de la disciplina')
+            Section::make('💪 Datos de la Disciplina')
+                ->description('Completa la información para registrar una disciplina del gimnasio.')
                 ->schema([
                     TextInput::make('nombre')
-                        ->label('Nombre')
+                        ->label('Nombre de la disciplina')
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->placeholder('Ej: Crossfit, Zumba, Spinning'),
 
                     TextInput::make('descripcion')
-                        ->label('Descripción')
+                        ->label('Descripción breve')
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->placeholder('Ej: Clase intensa de resistencia y fuerza'),
 
                     Textarea::make('observaciones')
-                        ->label('Observaciones')
+                        ->label('Observaciones adicionales')
                         ->rows(3)
-                        ->maxLength(500),
+                        ->maxLength(500)
+                        ->placeholder('Notas, recomendaciones o detalles logísticos...'),
                 ])
-                ->columns(1),
+                ->columns(2),
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('nombre')->sortable()->searchable(),
-            TextColumn::make('descripcion')->limit(30)->label('Descripción'),
-            TextColumn::make('observaciones')->limit(30),
+            TextColumn::make('nombre')
+                ->label('⚡ Disciplina')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('descripcion')
+                ->label('📝 Descripción')
+                ->limit(30),
+
+            TextColumn::make('observaciones')
+                ->label('🔍 Observaciones')
+                ->limit(30),
         ]);
     }
 

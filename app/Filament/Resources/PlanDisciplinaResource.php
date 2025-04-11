@@ -13,8 +13,6 @@ use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Validation\Rule;
-use Filament\Forms\Get;
 
 class PlanDisciplinaResource extends Resource
 {
@@ -22,39 +20,59 @@ class PlanDisciplinaResource extends Resource
 
     protected static ?string $modelLabel = 'Precio de Plan';
     protected static ?string $pluralModelLabel = 'Precios de Plan';
-    protected static ?string $navigationLabel = 'Precios por disciplina';
+    protected static ?string $navigationLabel = 'Precios por Disciplina';
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
     protected static ?string $navigationGroup = 'Catálogos';
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('Asignación de Precio')->schema([
-                Select::make('plan_id')
-                    ->label('Plan')
-                    ->options(Plan::pluck('nombre', 'id'))
-                    ->searchable()
-                    ->required(),
+            Section::make('💰 Asignación de Precio')
+                ->description('Define el precio de un plan según la disciplina que lo utilice.')
+                ->schema([
+
+                    Select::make('plan_id')
+                        ->label('Plan')
+                        ->options(Plan::pluck('nombre', 'id'))
+                        ->searchable()
+                        ->required()
+                        ->placeholder('Seleccione un plan'),
 
                     Select::make('disciplina_id')
-                    ->label('Disciplina')
-                    ->options(Disciplina::pluck('nombre', 'id'))
-                    ->searchable()
-                    ->required(),
-                TextInput::make('precio')
-                    ->label('Precio (Bs.)')
-                    ->numeric()
-                    ->required(),
-            ])->columns(2),
+                        ->label('Disciplina')
+                        ->options(Disciplina::pluck('nombre', 'id'))
+                        ->searchable()
+                        ->required()
+                        ->placeholder('Seleccione una disciplina'),
+
+                    TextInput::make('precio')
+                        ->label('Precio asignado (Bs.)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(0)
+                        ->placeholder('Ej: 120.00'),
+                ])
+                ->columns(2),
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('plan.nombre')->label('Plan')->sortable()->searchable(),
-            TextColumn::make('disciplina.nombre')->label('Disciplina')->sortable()->searchable(),
-            TextColumn::make('precio')->money('BOB')->label('Precio')->sortable(),
+            TextColumn::make('plan.nombre')
+                ->label('📦 Plan')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('disciplina.nombre')
+                ->label('⚡ Disciplina')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('precio')
+                ->label('💰 Precio (Bs.)')
+                ->money('BOB')
+                ->sortable(),
         ]);
     }
 

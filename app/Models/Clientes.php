@@ -53,4 +53,10 @@ class Clientes extends Model
     {
         return $this->hasOne(Casillero::class);
     }
+
+    public function getNombreCompletoAttribute()
+    {
+        return "{$this->nombre} {$this->apellido_paterno} {$this->apellido_materno}";
+    }
+
 }

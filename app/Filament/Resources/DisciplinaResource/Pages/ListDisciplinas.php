@@ -5,6 +5,7 @@ namespace App\Filament\Resources\DisciplinaResource\Pages;
 use App\Filament\Resources\DisciplinaResource;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Pages\Actions\CreateAction;
 
 class ListDisciplinas extends ListRecords
 {
@@ -13,7 +14,8 @@ class ListDisciplinas extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make()
+                ->label('Registrar Disciplina')
         ];
     }
 }

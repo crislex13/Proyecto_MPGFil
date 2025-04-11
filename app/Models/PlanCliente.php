@@ -39,6 +39,29 @@ class PlanCliente extends Model
         return $this->belongsTo(Disciplina::class);
     }
 
+    public function sesionesAdicionales()
+    {
+        return $this->hasMany(\App\Models\SesionAdicional::class);
+    }
 
+    public function getClienteDisplayNameAttribute()
+    {
+        return $this->cliente
+            ? $this->cliente->nombre . ' ' . $this->cliente->apellido_paterno . ' ' . $this->cliente->apellido_materno
+            : 'Sin nombre';
+    }
+
+    public function recalcularTotal()
+    {
+        $precioPlan = $this->precio_plan ?? 0;
+        $casillero = $this->casillero_monto ?? 0;
+        $sesiones = $this->sesionesAdicionales()->sum('precio') ?? 0;
+
+        $total = $precioPlan + $casillero + $sesiones;
+
+        $this->total = $total;
+        $this->saldo = max($total - $this->a_cuenta, 0);
+        $this->save();
+    }
 
 }

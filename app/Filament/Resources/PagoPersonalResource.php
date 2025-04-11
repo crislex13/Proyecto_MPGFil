@@ -22,6 +22,7 @@ use Filament\Forms\Components\ViewField;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Illuminate\Database\Eloquent\Builder;
 
 class PagoPersonalResource extends Resource
 {
@@ -45,26 +46,21 @@ class PagoPersonalResource extends Resource
                 ->icon('heroicon-o-currency-dollar')
                 ->schema([
                     Select::make('personal_id')
-                        ->label('Personal')
-                        ->getSearchResultsUsing(function (string $search) {
-                            return \App\Models\Personal::query()
-                                ->select('id', 'nombre', 'apellido_paterno', 'apellido_materno')
-                                ->whereRaw("CONCAT(nombre, ' ', apellido_paterno, ' ', apellido_materno) LIKE ?", ["%{$search}%"])
-                                ->limit(20)
-                                ->get()
-                                ->mapWithKeys(fn($personal) => [
-                                    $personal->id => "{$personal->nombre} {$personal->apellido_paterno} {$personal->apellido_materno}",
-                                ]);
-                        })
-                        ->getOptionLabelUsing(
-                            fn($value) =>
-                            \App\Models\Personal::find($value)?->nombre_completo ?? 'Sin nombre'
+                        ->label('Instructor')
+                        ->relationship(
+                            name: 'personal',
+                            titleAttribute: 'nombre_completo',
+                            modifyQueryUsing: fn(Builder $query, $search) => $query->where(function ($q) use ($search) {
+                                $q->where('nombre', 'like', "%$search%")
+                                    ->orWhere('apellido_paterno', 'like', "%$search%")
+                                    ->orWhere('apellido_materno', 'like', "%$search%");
+                            })
                         )
+                        ->getOptionLabelFromRecordUsing(fn($record) => $record->nombre_completo)
                         ->searchable()
-                        ->placeholder('Buscar por nombre completo')
-                        ->preload()
+                        ->preload() // <-- Esto hace que cargue como en clientes
                         ->required()
-                        ->columnSpan(2),
+                        ->placeholder('Seleccione al instructor'),
 
                     ViewField::make('personal_foto')
                         ->view('components.personal-foto') // ✅ Esto SÍ funciona, sin envolverlo
@@ -80,12 +76,19 @@ class PagoPersonalResource extends Resource
 
                     Select::make('turno_id')
                         ->label('Turno')
-                        ->relationship(
-                            name: 'turno',
-                            titleAttribute: 'nombre',
-                            modifyQueryUsing: fn($query) => $query->where('estado', 'activo')
+                        ->placeholder('Seleccione el turno trabajado')
+                        ->options(
+                            fn(Get $get) =>
+                            $get('personal_id')
+                            ? \App\Models\Turno::where('personal_id', $get('personal_id'))->pluck('nombre', 'id')
+                            : []
                         )
-                        ->placeholder('Seleccione el turno trabajado'),
+                        ->searchable()
+                        ->required()
+                        ->reactive() // escucha cambios
+                        //->disabled(fn(Get $get) => !$get('personal_id')) 
+                        ->hint('Seleccione el turno que trabajó el instructor')
+                        ->hintColor('gray'),
 
                     Select::make('sala_id')
                         ->label('Sala')
