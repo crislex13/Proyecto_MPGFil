@@ -4,21 +4,29 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ClientesResource\Pages;
 use App\Models\Clientes;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Columns\ImageColumn;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Forms\Components\{
+    DatePicker,
+    FileUpload,
+    Section,
+    Select,
+    TextInput,
+    Textarea,
+    Placeholder
+};
+use Filament\Tables\Columns\{
+    BadgeColumn,
+    ImageColumn,
+    TextColumn
+};
+use Filament\Tables\Actions\Action;
 use Illuminate\Support\HtmlString;
+use Filament\Tables;
+use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Components\Hidden;
+use Filament\Facades\Filament;
 
 class ClientesResource extends Resource
 {
@@ -31,168 +39,312 @@ class ClientesResource extends Resource
     {
         return $form->schema([
             Section::make('Datos personales')
-                ->description('Completa esta sección con los datos del cliente.')
                 ->icon('heroicon-o-identification')
-                ->collapsible()
+                ->columns(2)
                 ->schema([
-                    TextInput::make('nombre')->required()->placeholder('Ingrese el nombre'),
-                    TextInput::make('apellido_paterno')->required()->placeholder('Ingrese el apellido paterno'),
-                    TextInput::make('apellido_materno')->placeholder('Ingrese el apellido materno (opcional)'),
-                    DatePicker::make('fecha_de_nacimiento')->required()->placeholder('Seleccione la fecha de nacimiento'),
-                    TextInput::make('ci')
-                        ->label('Carnet de identidad')
+                    TextInput::make('nombre')
                         ->required()
-                        ->placeholder('Ingrese el C.I. (Carnet de Identidad)'),
+                        ->placeholder('Nombre del cliente')
+                        ->helperText('Este nombre se usará para crear el nombre de usuario del sistema.'),
+
+                    TextInput::make('apellido_paterno')
+                        ->required()
+                        ->placeholder('Apellido paterno'),
+
+                    TextInput::make('apellido_materno')
+                        ->placeholder('Apellido materno'),
+
+                    DatePicker::make('fecha_de_nacimiento')
+                        ->required()
+                        ->label('Fecha de nacimiento')
+                        ->placeholder('Seleccione una fecha')
+                        ->helperText('Se usará como contraseña inicial para el acceso al sistema.'),
+
+                    TextInput::make('ci')
+                        ->label('C.I.')
+                        ->required()
+                        ->placeholder('Carnet de identidad')
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            if ($state) {
+                                $set('biometrico_id', $state);
+                            }
+                        })
+                        ->helperText('Este valor se usará como identificador único del usuario.'),
+
                     TextInput::make('telefono')
-                        ->label('Teléfono o Celular')
+                        ->label('Teléfono (WhatsApp)')
                         ->tel()
-                        ->maxLength(15)
-                        ->placeholder('Ingrese su número de teléfono o celular'),
-                    TextInput::make('correo')->email()->placeholder('Ingrese su correo electrónico (opcional)'),
-                    Select::make('sexo')->options([
-                        'masculino' => 'Masculino',
-                        'femenino' => 'Femenino',
-                    ])->placeholder('Seleccione el sexo'),
+                        ->maxLength(13)
+                        ->minLength(8)
+                        ->required()
+                        ->default('+591')
+                        ->placeholder('+59171234567')
+                        ->prefixIcon('heroicon-o-device-phone-mobile')
+                        ->helperText('Incluye el código de país. El número debe comenzar con +591.')
+                        ->afterStateHydrated(function (callable $set, $state) {
+                            if (empty($state)) {
+                                $set('telefono', '+591');
+                            }
+                        })
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            if (preg_match('/^\d{8}$/', $state)) {
+                                $set('telefono', '+591' . $state);
+                            }
+                        }),
+
+                    TextInput::make('correo')
+                        ->label('Correo')
+                        ->email()
+                        ->placeholder('correo@ejemplo.com'),
+
+                    Select::make('sexo')
+                        ->label('Sexo')
+                        ->options([
+                            'masculino' => 'Masculino',
+                            'femenino' => 'Femenino',
+                        ])
+                        ->placeholder('Seleccione el sexo'),
+
                     FileUpload::make('foto')
-                        ->label('Foto del cliente')
+                        ->label('Foto')
                         ->image()
-                        ->directory('fotos/clientes')
                         ->disk('public')
-                        ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName()))
+                        ->directory('fotos/clientes')
                         ->previewable()
-                        ->dehydrated(),
+                        ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName())),
+
                     TextInput::make('biometrico_id')
-                        ->label('ID del biométrico')
+                        ->label('ID biométrico')
                         ->disabled()
                         ->dehydrated()
-                        ->placeholder('Se llenará automáticamente con el C.I.'),
-                ])->columns(2),
+                        ->placeholder('Se autollenará con el C.I.'),
+                ]),
 
-            Section::make('Salud y contacto de emergencia')
-                ->description('Completa esta sección con los datos de emergencia del cliente.')
-                ->icon('heroicon-o-identification')
-                ->collapsible()
+            Section::make('Emergencias y salud')
+                ->icon('heroicon-o-exclamation-circle')
+                ->columns(2)
                 ->schema([
-                    Textarea::make('antecedentes_medicos')->placeholder('Describa antecedentes médicos relevantes (opcional)'),
-                    TextInput::make('contacto_emergencia_nombre')->label('Nombre')->placeholder('Ingrese el nombre del contacto de emergencia'),
-                    TextInput::make('contacto_emergencia_parentesco')->placeholder('Ingrese el parentesco con el contacto de emergencia'),
-                    TextInput::make('contacto_emergencia_celular')->placeholder('Ingrese el número de celular del contacto de emergencia'),
-                ])->columns(2),
+                    Textarea::make('antecedentes_medicos')
+                        ->label('Antecedentes médicos')
+                        ->placeholder('Ej: Asma, hipertensión...'),
 
-            Section::make('Estado del cliente')
-                ->description('Selecciona el estado del cliente.')
-                ->icon('heroicon-o-identification')
+                    TextInput::make('contacto_emergencia_nombre')
+                        ->label('Nombre de emergencia')
+                        ->placeholder('Nombre del contacto'),
+
+                    TextInput::make('contacto_emergencia_parentesco')
+                        ->label('Parentesco')
+                        ->placeholder('Parentesco con el cliente'),
+
+                    TextInput::make('contacto_emergencia_celular')
+                        ->label('Celular del contacto')
+                        ->placeholder('+59171234567'),
+                ]),
+
+            Section::make('Control de cambios')
+                ->icon('heroicon-o-user-circle')
                 ->collapsible()
+                ->columns(1)
                 ->schema([
-                    Select::make('estado')->options([
-                        'activo' => 'Activo',
-                        'inactivo' => 'Inactivo',
-                    ])->default('activo')->required()->placeholder('Seleccione el estado del cliente'),
+                    Placeholder::make('registrado_por')
+                        ->label('Registrado por')
+                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'Aún no registrado'),
+
+                    Placeholder::make('modificado_por')
+                        ->label('Modificado por')
+                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin modificaciones'),
                 ]),
         ]);
     }
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (isset($data['telefono']) && preg_match('/^\d{8}$/', $data['telefono'])) {
+            $data['telefono'] = '+591' . $data['telefono'];
+        }
+
+        return $data;
+    }
+
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            ImageColumn::make('foto_url')
-                ->label('Foto')
-                ->circular()
-                ->height(40)
-                ->width(40),
+        return $table
+            ->columns([
+                ImageColumn::make('foto_url')
+                    ->label('Foto')
+                    ->circular()
+                    ->height(40)
+                    ->width(40),
 
-            TextColumn::make('nombre')
-                ->label('Nombre')
-                ->icon('heroicon-o-user')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('nombre')
+                    ->label('Nombre')
+                    ->icon('heroicon-o-user')
+                    ->searchable()
+                    ->sortable(),
 
-            TextColumn::make('apellido_paterno')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('apellido_paterno')
+                    ->label('Apellido paterno')
+                    ->icon('heroicon-o-user-circle')
+                    ->searchable()
+                    ->sortable(),
 
-            TextColumn::make('apellido_materno')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('apellido_materno')
+                    ->label('Apellido materno')
+                    ->icon('heroicon-o-user-circle')
+                    ->searchable()
+                    ->sortable(),
 
-            TextColumn::make('ci')
-                ->label('C.I.')
-                ->sortable()
-                ->searchable(),
+                TextColumn::make('ci')
+                    ->label('C.I.')
+                    ->icon('heroicon-o-identification')
+                    ->sortable()
+                    ->searchable(),
 
-            TextColumn::make('correo')
-                ->searchable(),
+                TextColumn::make('telefono')
+                    ->label('Teléfono')
+                    ->icon('heroicon-o-device-phone-mobile'),
 
-            TextColumn::make('telefono'),
+                TextColumn::make('correo')
+                    ->label('Correo')
+                    ->icon('heroicon-o-envelope')
+                    ->searchable(),
 
-            BadgeColumn::make('estado')
-                ->label('Estado del Cliente')
-                ->colors([
-                    'success' => 'activo',
-                    'danger' => 'inactivo',
-                ])
-                ->icon(fn($state) => $state === 'activo' ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
-                ->sortable(),
-        ])->actions([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                    Tables\Actions\Action::make('ver')
-                        ->label('Ver')
-                        ->icon('heroicon-o-eye')
-                        ->modalHeading('Detalles del Cliente')
-                        ->modalSubmitAction(false)
-                        ->modalCancelActionLabel('Cerrar')
-                        ->color('info')
-                        ->form(fn(Clientes $record) => [
+                TextColumn::make('usuario.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable(),
 
-                            Section::make('📸 Foto del Cliente')->schema([
-                                Placeholder::make('foto')
-                                    ->label('Foto')
-                                    ->content(fn() => new HtmlString(
-                                        '<div style="display: flex; justify-content: center;">
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('sexo')
+                    ->label('Sexo')
+                    ->options([
+                        'masculino' => 'Masculino',
+                        'femenino' => 'Femenino',
+                    ]),
+
+                Tables\Filters\Filter::make('rango_edad')
+                    ->label('Edad')
+                    ->form([
+                        TextInput::make('min')
+                            ->label('Edad mínima')
+                            ->numeric()
+                            ->placeholder('Ej: 18'),
+                        TextInput::make('max')
+                            ->label('Edad máxima')
+                            ->numeric()
+                            ->placeholder('Ej: 50'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when(
+                                $data['min'],
+                                fn($q) =>
+                                $q->whereDate('fecha_de_nacimiento', '<=', now()->subYears($data['min']))
+                            )
+                            ->when(
+                                $data['max'],
+                                fn($q) =>
+                                $q->whereDate('fecha_de_nacimiento', '>=', now()->subYears($data['max']))
+                            );
+                    }),
+
+                Tables\Filters\SelectFilter::make('registrado_por')
+                    ->label('Registrado por')
+                    ->relationship('registradoPor', 'name')
+                    ->searchable(),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+
+                Action::make('ver')
+                    ->label('Ver')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading('Detalles del Cliente')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->color('info')
+                    ->form(fn(Clientes $record) => [
+                        Section::make('Foto del Cliente')->schema([
+
+                            Placeholder::make('foto')
+                                ->label('Foto')
+                                ->content(fn() => new HtmlString(
+                                    '<div style="display: flex; justify-content: center;">
                                     <img src="' . asset('storage/' . $record->foto) . '" alt="Foto del cliente" style="width: 140px; height: 140px; object-fit: cover; border-radius: 100px; border: 2px solid #ccc;" />
                                 </div>'
-                                    ))
-                                    ->columnSpanFull(),
+                                ))->columnSpanFull(),
+                        ]),
+
+                        Section::make('Datos Personales')
+                            ->columns(2)
+                            ->schema([
+                                Placeholder::make('nombre')
+                                    ->label('Nombre')
+                                    ->content($record->nombre),
+
+                                Placeholder::make('apellido_paterno')
+                                    ->label('Apellido Paterno')
+                                    ->content($record->apellido_paterno),
+
+                                Placeholder::make('apellido_materno')
+                                    ->label('Apellido Materno')
+                                    ->content($record->apellido_materno),
+
+                                Placeholder::make('ci')
+                                    ->label('C.I.')
+                                    ->content($record->ci),
+
+                                Placeholder::make('fecha_de_nacimiento')
+                                    ->label('Fecha de nacimiento')
+                                    ->content($record->fecha_de_nacimiento),
+
+                                Placeholder::make('telefono')
+                                    ->label('Teléfono')
+                                    ->content($record->telefono),
+
+                                Placeholder::make('correo')
+                                    ->label('Correo')
+                                    ->content($record->correo),
+
+                                Placeholder::make('sexo')
+                                    ->label('Sexo')
+                                    ->content($record->sexo),
+
+                                Placeholder::make('biometrico_id')
+                                    ->label('ID Biométrico')
+                                    ->content($record->biometrico_id),
                             ]),
 
-                            Section::make('🧍 Datos Personales')->schema([
-                                TextInput::make('nombre')->default($record->nombre)->disabled(),
-                                TextInput::make('apellido_paterno')->default($record->apellido_paterno)->disabled(),
-                                TextInput::make('apellido_materno')->default($record->apellido_materno)->disabled(),
-                                TextInput::make('ci')->default($record->ci)->disabled(),
-                                DatePicker::make('fecha_de_nacimiento')->default($record->fecha_de_nacimiento)->disabled(),
-                                TextInput::make('telefono')->default($record->telefono)->disabled(),
-                                TextInput::make('correo')->default($record->correo)->disabled(),
-                                Placeholder::make('sexo')->label('Sexo')->content($record->sexo),
-                                Placeholder::make('biometrico_id')->label('ID Biométrico')->content($record->biometrico_id),
-                            ])->columns(2),
+                        Section::make('Emergencias y Salud')->columns(2)->schema([
 
-                            Section::make('🚨 Emergencias y Salud')->schema([
-                                Placeholder::make('antecedentes_medicos')->label('Antecedentes Médicos')->content($record->antecedentes_medicos ?? 'Ninguno'),
-                                Placeholder::make('contacto_emergencia_nombre')->label('Nombre de Emergencia')->content($record->contacto_emergencia_nombre ?? '-'),
-                                Placeholder::make('contacto_emergencia_parentesco')->label('Parentesco')->content($record->contacto_emergencia_parentesco ?? '-'),
-                                Placeholder::make('contacto_emergencia_celular')->label('Celular')->content($record->contacto_emergencia_celular ?? '-'),
-                            ])->columns(2),
+                            Placeholder::make('antecedentes_medicos')
+                                ->label('Antecedentes Médicos')
+                                ->content($record->antecedentes_medicos ?? 'Ninguno'),
 
-                            Section::make('💼 Estado del Cliente')->schema([
-                                Placeholder::make('estado')
-                                    ->label('Estado')
-                                    ->content(fn() => new HtmlString(
-                                        $record->estado === 'activo'
-                                        ? '<span style="color: green; font-weight: bold;">🟢 Activo</span>'
-                                        : '<span style="color: red; font-weight: bold;">🔴 Inactivo</span>'
-                                    )),
-                                Placeholder::make('bloqueado_por_deuda')
-                                    ->label('Bloqueado por Deuda')
-                                    ->content(fn() => new HtmlString(
-                                        $record->bloqueado_por_deuda
-                                        ? '<span style="color: red;">Sí</span>'
-                                        : '<span style="color: green;">No</span>'
-                                    )),
-                            ])->columns(2),
+                            Placeholder::make('contacto_emergencia_nombre')
+                                ->label('Nombre de emergencia')
+                                ->content($record->contacto_emergencia_nombre ?? '-'),
+
+                            Placeholder::make('contacto_emergencia_parentesco')
+                                ->label('Parentesco')
+                                ->content($record->contacto_emergencia_parentesco ?? '-'),
+
+                            Placeholder::make('contacto_emergencia_celular')
+                                ->label('Celular')
+                                ->content($record->contacto_emergencia_celular ?? '-'),
+
                         ]),
-                ]);
+                    ]),
+            ]);
     }
 
     public static function getRelations(): array

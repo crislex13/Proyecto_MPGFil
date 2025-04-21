@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 class PlanCliente extends Model
 {
@@ -19,10 +20,31 @@ class PlanCliente extends Model
         'a_cuenta',
         'saldo',
         'total',
-        'casillero_monto',
         'metodo_pago',
         'comprobante',
+        'estado',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($plan) {
+            $plan->estado = $plan->calcularEstado();
+        });
+
+        static::updating(function ($plan) {
+            $plan->estado = $plan->calcularEstado();
+        });
+
+        static::saving(function ($plan) {
+            if (
+                $plan->estado === 'bloqueado' &&
+                $plan->saldo <= 0 &&
+                now()->between($plan->fecha_inicio, $plan->fecha_final)
+            ) {
+                $plan->estado = 'vigente';
+            }
+        });
+    }
 
     public function cliente(): BelongsTo
     {
@@ -61,7 +83,24 @@ class PlanCliente extends Model
 
         $this->total = $total;
         $this->saldo = max($total - $this->a_cuenta, 0);
+        $this->estado = $this->calcularEstado();
         $this->save();
     }
 
+    public function calcularEstado(): string
+    {
+        if ($this->estado === 'bloqueado') {
+            return 'bloqueado';
+        }
+
+        if (Carbon::parse($this->fecha_final)->isPast()) {
+            return 'vencido';
+        }
+
+        if ($this->saldo > 0) {
+            return 'con deuda';
+        }
+
+        return 'vigente';
+    }
 }

@@ -26,4 +26,9 @@ class EditPlanDisciplina extends EditRecord
             ]);
         }
     }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

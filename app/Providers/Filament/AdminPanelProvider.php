@@ -26,7 +26,7 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->maxContentWidth('full')
-            ->renderHook('panels::body.start', fn () => '<style>.fi-main { padding-left: 1rem; padding-right: 1rem; }</style>')
+            ->renderHook('panels::body.start', fn() => '<style>.fi-main { padding-left: 1rem; padding-right: 1rem; }</style>')
             ->id('admin')
             ->path('admin')
             ->login()

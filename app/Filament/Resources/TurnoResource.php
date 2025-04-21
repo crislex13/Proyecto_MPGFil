@@ -23,9 +23,14 @@ class TurnoResource extends Resource
 {
     protected static ?string $model = Turno::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-calendar';
 
-    protected static ?string $navigationGroup = 'Operaciones';
+    protected static ?string $navigationGroup = 'Gestión de Personal';
+
+    protected static ?string $pluralModelLabel = 'Turnos';
+
+    protected static ?string $navigationLabel = 'Turnos';
+
 
     public static function form(Form $form): Form
     {
@@ -40,7 +45,7 @@ class TurnoResource extends Resource
                         ->relationship(
                             name: 'personal',
                             titleAttribute: 'nombre_completo',
-                            modifyQueryUsing: fn (Builder $query, $search) => $query->where(function ($q) use ($search) {
+                            modifyQueryUsing: fn(Builder $query, $search) => $query->where(function ($q) use ($search) {
                                 $q->where('nombre', 'like', "%$search%")
                                     ->orWhere('apellido_paterno', 'like', "%$search%")
                                     ->orWhere('apellido_materno', 'like', "%$search%");
@@ -58,6 +63,21 @@ class TurnoResource extends Resource
                         ->placeholder('Ejemplo: Mañana, Tarde, Noche')
                         ->required()
                         ->maxLength(50)
+                        ->columnSpan(2),
+
+                    Select::make('dia')
+                        ->label('Día de la Semana')
+                        ->placeholder('Seleccione un día')
+                        ->options([
+                            'lunes' => 'Lunes',
+                            'martes' => 'Martes',
+                            'miércoles' => 'Miércoles',
+                            'jueves' => 'Jueves',
+                            'viernes' => 'Viernes',
+                            'sábado' => 'Sábado',
+                            'domingo' => 'Domingo',
+                        ])
+                        ->required()
                         ->columnSpan(2),
 
                     TimePicker::make('hora_inicio')
@@ -165,6 +185,15 @@ class TurnoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
+                BadgeColumn::make('dia')
+                    ->label('Día')
+                    ->colors([
+                        'gray' => fn($state) => in_array($state, ['lunes', 'martes', 'miércoles', 'jueves', 'viernes']),
+                        'warning' => fn($state) => $state === 'sábado',
+                        'danger' => fn($state) => $state === 'domingo',
+                    ])
+                    ->sortable(),
+
                 TextColumn::make('hora_inicio')
                     ->label('Hora de Inicio')
                     ->icon('heroicon-o-clock')
@@ -197,6 +226,19 @@ class TurnoResource extends Resource
                     ->options([
                         'activo' => 'Activo',
                         'inactivo' => 'Inactivo',
+                    ])
+                    ->placeholder('Todos'),
+
+                Tables\Filters\SelectFilter::make('dia')
+                    ->label('Filtrar por Día')
+                    ->options([
+                        'lunes' => 'Lunes',
+                        'martes' => 'Martes',
+                        'miércoles' => 'Miércoles',
+                        'jueves' => 'Jueves',
+                        'viernes' => 'Viernes',
+                        'sábado' => 'Sábado',
+                        'domingo' => 'Domingo',
                     ])
                     ->placeholder('Todos'),
             ])

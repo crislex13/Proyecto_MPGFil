@@ -20,9 +20,14 @@ class SalaResource extends Resource
 {
     protected static ?string $model = Sala::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-building-library';
 
-    protected static ?string $navigationGroup = 'Operaciones';
+    protected static ?string $navigationGroup = 'Gestión de Personal';
+
+    protected static ?string $pluralModelLabel = 'Salas de Trabajo';
+
+    protected static ?string $navigationLabel = 'Salas de Trabajo';
+
 
     public static function form(Form $form): Form
     {

@@ -7,23 +7,23 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
-    /**
-     * Define the application's command schedule.
-     */
+    protected $commands = [
+        \App\Console\Commands\BloquearPlanesPorDeuda::class,
+    ];
+
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('clientes:bloquear-si-deben')->dailyAt('07:00');
+        $schedule->command('bloquear:planes-deuda')->dailyAt('06:00');
         $schedule->command('clientes:desbloquear-si-pagaron')->dailyAt('07:10');
-        
+        $schedule->command('app:procesar-asistencias-biometrico')->everyMinute();
+
     }
 
-    /**
-     * Register the commands for the application.
-     */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }
+
 }

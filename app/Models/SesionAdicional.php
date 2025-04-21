@@ -8,8 +8,12 @@ class SesionAdicional extends Model
 {
     protected $table = 'sesiones_adicionales';
     protected $fillable = [
+        'cliente_id',
         'plan_cliente_id',
         'instructor_id',
+        'turno_id',
+        'hora_inicio',
+        'hora_fin',
         'tipo_sesion',
         'precio',
         'fecha',
@@ -30,19 +34,29 @@ class SesionAdicional extends Model
         });
     }
 
-    public function planCliente(): BelongsTo
+    public function cliente()
     {
-        return $this->belongsTo(PlanCliente::class);
+        return $this->belongsTo(Clientes::class);
+    }
+
+    public function planCliente()
+    {
+        return $this->belongsTo(PlanCliente::class, 'plan_cliente_id');
     }
 
     public function instructor()
     {
-        return $this->belongsTo(Personal::class, 'personal_id');
+        return $this->belongsTo(Personal::class, 'instructor_id');
     }
 
     public function turno()
     {
-        return $this->belongsTo(Turno::class);
+        return $this->belongsTo(Turno::class, 'turno_id');
+    }
+
+    public function disciplina()
+    {
+        return $this->belongsTo(\App\Models\Disciplina::class);
     }
 
 }

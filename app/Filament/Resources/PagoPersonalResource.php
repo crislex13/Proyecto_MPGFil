@@ -28,15 +28,13 @@ class PagoPersonalResource extends Resource
 {
     protected static ?string $model = PagoPersonal::class;
 
-    protected static ?string $modelLabel = 'pago de personal';
+    protected static ?string $pluralModelLabel = 'Pagos del personal';
 
-    protected static ?string $pluralModelLabel = 'Pagos de personal';
+    protected static ?string $navigationLabel = 'Pagos del personal';
 
-    protected static ?string $navigationLabel = 'Pagos de personal';
+    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
-    protected static ?string $navigationGroup = 'Operaciones';
+    protected static ?string $navigationGroup = 'Gestión de Personal';
 
     public static function form(Form $form): Form
     {
@@ -70,6 +68,7 @@ class PagoPersonalResource extends Resource
                     TextInput::make('monto')
                         ->label('Monto (Bs.)')
                         ->placeholder('Ejemplo: 50.00')
+                        ->minValue(0)
                         ->required()
                         ->numeric()
                         ->minValue(0),

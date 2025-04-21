@@ -14,6 +14,11 @@ class Plan extends Model
     protected $fillable = [
         'nombre',
         'duracion_dias',
+        'ingresos_ilimitados',
+    ];
+
+    protected $casts = [
+        'ingresos_ilimitados' => 'boolean',
     ];
 
     public function clientes(): HasMany
@@ -24,6 +29,11 @@ class Plan extends Model
     public function planDisciplinas(): HasMany
     {
         return $this->hasMany(PlanDisciplina::class);
+    }
+
+    public function permiteIngresosIlimitados(): bool
+    {
+        return $this->ingresos_ilimitados;
     }
 }
 

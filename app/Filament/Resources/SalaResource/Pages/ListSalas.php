@@ -15,7 +15,7 @@ class ListSalas extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('Registrar Sala') // ← Este es el cambio clave
+                ->label('Registrar Sala')
         ];
     }
 }

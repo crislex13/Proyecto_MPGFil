@@ -15,7 +15,7 @@ class ListPlanDisciplinas extends ListRecords
     {
         return [
             CreateAction::make()
-                ->label('Registrar Precio') 
+                ->label('Asignar Precio') 
         ];
     }
 }

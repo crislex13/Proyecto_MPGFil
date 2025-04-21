@@ -9,4 +9,8 @@ use Filament\Resources\Pages\CreateRecord;
 class CreatePlanCliente extends CreateRecord
 {
     protected static string $resource = PlanClienteResource::class;
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

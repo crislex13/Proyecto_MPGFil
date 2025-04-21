@@ -81,6 +81,7 @@ class CasilleroResource extends Resource
                     ->label('Monto por reposiciones (Bs.)')
                     ->numeric()
                     ->default(0)
+                    ->minValue(0)
                     ->disabled()
                     ->dehydrated()
                     ->placeholder('Se calcula automáticamente'),
@@ -110,105 +111,140 @@ class CasilleroResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns([
+        return $table
+            ->columns([
 
-            ImageColumn::make('cliente.foto_url')
-                ->label('Foto')
-                ->circular()
-                ->height(40)
-                ->width(40)
-                ->getStateUsing(fn($record) => $record->cliente?->foto
-                    ? asset('storage/' . $record->cliente->foto)
-                    : asset('images/default-locker.png')),
+                ImageColumn::make('cliente.foto_url')
+                    ->label('Foto')
+                    ->circular()
+                    ->height(40)
+                    ->width(40)
+                    ->getStateUsing(fn($record) => $record->cliente?->foto
+                        ? asset('storage/' . $record->cliente->foto)
+                        : asset('images/default-locker.png')),
 
-            TextColumn::make('nombre_cliente')
-                ->label('Cliente')
-                ->searchable(query: function ($query, $search) {
-                    return $query->whereHas('cliente', function ($q) use ($search) {
-                        $q->where('nombre', 'like', "%$search%")
-                            ->orWhere('apellido_paterno', 'like', "%$search%")
-                            ->orWhere('apellido_materno', 'like', "%$search%");
-                    });
-                })
-                ->sortable(),
+                TextColumn::make('nombre_cliente')
+                    ->label('Cliente')
+                    ->icon('heroicon-o-user')
+                    ->searchable(query: function ($query, $search) {
+                        return $query->whereHas('cliente', function ($q) use ($search) {
+                            $q->where('nombre', 'like', "%$search%")
+                                ->orWhere('apellido_paterno', 'like', "%$search%")
+                                ->orWhere('apellido_materno', 'like', "%$search%");
+                        });
+                    })
+                    ->sortable(),
 
-            TextColumn::make('numero')
-                ->label('N° Casillero')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('numero')
+                    ->label('N° Casillero')
+                    ->icon('heroicon-o-lock-closed')
+                    ->searchable()
+                    ->sortable(),
 
-            BadgeColumn::make('estado')
-                ->label('Estado')
-                ->colors([
-                    'success' => 'disponible',
-                    'warning' => 'ocupado',
-                    'danger' => 'mantenimiento',
-                ])
-                ->icons([
-                    'heroicon-o-check-circle',
-                    'heroicon-o-exclamation-triangle',
-                    'heroicon-o-wrench-screwdriver',
-                ])
-                ->sortable(),
+                BadgeColumn::make('estado')
+                    ->label('Estado')
+                    ->colors([
+                        'success' => 'disponible',
+                        'warning' => 'ocupado',
+                        'danger' => 'mantenimiento',
+                    ])
+                    ->icons([
+                        'heroicon-o-check-circle',
+                        'heroicon-o-exclamation-triangle',
+                        'heroicon-o-wrench-screwdriver',
+                    ])
+                    ->sortable(),
 
-            TextColumn::make('costo_mensual')
-                ->label('Costo mensual')
-                ->money('BOB')
-                ->sortable(),
+                TextColumn::make('costo_mensual')
+                    ->label('Costo mensual')
+                    ->icon('heroicon-o-banknotes')
+                    ->money('BOB')
+                    ->sortable(),
 
-            TextColumn::make('total_reposiciones')
-                ->label('Reposiciones')
-                ->sortable(),
+                TextColumn::make('total_reposiciones')
+                    ->label('Reposiciones')
+                    ->icon('heroicon-o-arrow-path') // reemplazo válido de "refresh"
+                    ->sortable(),
 
-            TextColumn::make('monto_reposiciones')
-                ->label('Bs Reposición')
-                ->money('BOB')
-                ->sortable(),
+                TextColumn::make('monto_reposiciones')
+                    ->label('Bs Reposición')
+                    ->icon('heroicon-o-currency-dollar')
+                    ->money('BOB')
+                    ->sortable(),
 
-            TextColumn::make('fecha_entrega_llave')
-                ->label('Entrega')
-                ->date('d/m/Y')
-                ->sortable(),
+                TextColumn::make('fecha_entrega_llave')
+                    ->label('Entrega')
+                    ->icon('heroicon-o-calendar')
+                    ->date('d/m/Y')
+                    ->sortable(),
 
-            TextColumn::make('fecha_final_llave')
-                ->label('Vence')
-                ->date('d/m/Y')
-                ->sortable(),
+                TextColumn::make('fecha_final_llave')
+                    ->label('Vence')
+                    ->icon('heroicon-o-calendar-days')
+                    ->date('d/m/Y')
+                    ->sortable(),
 
-            TextColumn::make('dias_restantes')
-                ->label('Días restantes')
-                ->getStateUsing(function ($record) {
-                    if (!$record->fecha_final_llave)
-                        return '—';
+                TextColumn::make('dias_restantes')
+                    ->label('Días restantes')
+                    ->icon('heroicon-o-clock')
+                    ->getStateUsing(function ($record) {
+                        if (!$record->fecha_final_llave)
+                            return '—';
 
-                    $dias = Carbon::now()->diffInDays(Carbon::parse($record->fecha_final_llave), false);
-                    return $dias < 0
-                        ? "Venció hace " . abs(intval($dias)) . " días"
-                        : intval($dias) . ' días';
-                })
-                ->sortable(),
+                        $dias = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($record->fecha_final_llave), false);
+                        return $dias < 0
+                            ? "Venció hace " . abs(intval($dias)) . " días"
+                            : intval($dias) . ' días';
+                    })
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('cliente_id')
+                    ->label('Cliente')
+                    ->relationship('cliente', 'nombre')
+                    ->searchable(),
 
-        ])->actions([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                    Tables\Actions\Action::make('desocupar')
-                        ->label('Desocupar')
-                        ->color('warning')
-                        ->icon('heroicon-o-archive-box-x-mark')
-                        ->requiresConfirmation()
-                        ->visible(fn($record) => $record->cliente_id !== null)
-                        ->action(function ($record) {
-                            $record->update([
-                                'cliente_id' => null,
-                                'fecha_entrega_llave' => null,
-                                'fecha_final_llave' => null,
-                                'reposicion_llave' => 0,
-                                'total_reposiciones' => 0,
-                                'monto_reposiciones' => 0.00,
-                                'estado' => 'disponible',
-                            ]);
-                        }),
-                ]);
+                Tables\Filters\SelectFilter::make('estado')
+                    ->label('Estado del casillero')
+                    ->options([
+                        'disponible' => 'Disponible',
+                        'ocupado' => 'Ocupado',
+                        'mantenimiento' => 'Mantenimiento',
+                    ]),
+
+                Tables\Filters\Filter::make('rango_fecha_entrega')
+                    ->label('Rango de entrega')
+                    ->form([
+                        DatePicker::make('desde')->label('Desde'),
+                        DatePicker::make('hasta')->label('Hasta'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['desde'], fn($q) => $q->whereDate('fecha_entrega_llave', '>=', $data['desde']))
+                            ->when($data['hasta'], fn($q) => $q->whereDate('fecha_entrega_llave', '<=', $data['hasta']));
+                    }),
+            ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('desocupar')
+                    ->label('Desocupar')
+                    ->color('warning')
+                    ->icon('heroicon-o-archive-box-x-mark')
+                    ->requiresConfirmation()
+                    ->visible(fn($record) => $record->cliente_id !== null)
+                    ->action(function ($record) {
+                        $record->update([
+                            'cliente_id' => null,
+                            'fecha_entrega_llave' => null,
+                            'fecha_final_llave' => null,
+                            'reposicion_llave' => 0,
+                            'total_reposiciones' => 0,
+                            'monto_reposiciones' => 0.00,
+                            'estado' => 'disponible',
+                        ]);
+                    }),
+            ]);
     }
 
     public static function getRelations(): array

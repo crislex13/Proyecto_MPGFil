@@ -21,55 +21,87 @@ use Illuminate\Support\HtmlString;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Spatie\Permission\Models\Role;
 
 class PersonalResource extends Resource
 {
     protected static ?string $model = Personal::class;
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static ?string $navigationLabel = 'Personal';
-    protected static ?string $navigationGroup = 'Administración';
+    protected static ?string $navigationGroup = 'Gestión de Personal';
     protected static ?string $modelLabel = 'Personal';
     protected static ?string $pluralModelLabel = 'Personal';
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('🧍 Datos Personales')
+            Section::make('Datos Personales')
                 ->description('Información básica del personal')
                 ->schema([
+
                     TextInput::make('nombre')
                         ->required()
                         ->label('Nombre')
-                        ->placeholder('Ej: Carlos'),
+                        ->placeholder('Ej: Carlos')
+                        ->helperText('Se usará para generar el usuario del sistema.'),
+
                     TextInput::make('apellido_paterno')
                         ->required()
                         ->label('Apellido Paterno')
                         ->placeholder('Ej: Pérez'),
+
                     TextInput::make('apellido_materno')
                         ->required()
                         ->label('Apellido Materno')
                         ->placeholder('Ej: Gutiérrez'),
+
                     DatePicker::make('fecha_de_nacimiento')
                         ->required()
-                        ->label('Fecha de nacimiento'),
+                        ->label('Fecha de nacimiento')
+                        ->placeholder('Seleccionar fecha')
+                        ->helperText('Se utilizará como contraseña inicial del usuario.'),
+
                     TextInput::make('ci')
                         ->label('C.I.')
                         ->required()
                         ->unique(ignoreRecord: true)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn(Get $get, Set $set, $state) => $set('biometrico_id', $state)),
+                        ->afterStateUpdated(fn(Get $get, Set $set, $state) => $set('biometrico_id', $state))
+                        ->placeholder('Carnet de identidad')
+                        ->helperText('Identificador único del personal.'),
+
                     TextInput::make('telefono')
-                        ->label('Teléfono')
+                        ->label('Teléfono (WhatsApp)')
                         ->tel()
-                        ->placeholder('Ej: 76543210'),
+                        ->maxLength(13)
+                        ->minLength(8)
+                        ->required()
+                        ->default('+591')
+                        ->placeholder('+59171234567')
+                        ->prefixIcon('heroicon-o-device-phone-mobile')
+                        ->helperText('Incluye el código de país. El número debe comenzar con +591.')
+                        ->afterStateHydrated(function (callable $set, $state) {
+                            if (empty($state)) {
+                                $set('telefono', '+591');
+                            }
+                        })
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            if (preg_match('/^\d{8}$/', $state)) {
+                                $set('telefono', '+591' . $state);
+                            }
+                        }),
+
                     TextInput::make('direccion')
                         ->label('Dirección')
                         ->placeholder('Ej: Av. América Oeste'),
+
                     TextInput::make('correo')
                         ->email()
                         ->required()
                         ->unique(ignoreRecord: true)
-                        ->label('Correo'),
+                        ->label('Correo')
+                        ->placeholder('correo@ejemplo.com'),
+
                     FileUpload::make('foto')
                         ->label('Foto del personal')
                         ->image()
@@ -77,21 +109,33 @@ class PersonalResource extends Resource
                         ->disk('public')
                         ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName()))
                         ->previewable(),
+
                 ])->columns(2),
 
-            Section::make('🏢 Datos Laborales')
+            Section::make('Datos Laborales')
                 ->description('Información laboral y administrativa')
                 ->schema([
-                    TextInput::make('cargo')
-                        ->required()->label('Cargo')
-                        ->placeholder('Ej: Instructor, Recepcionista'),
+                    Select::make('cargo')
+                        ->label('Cargo')
+                        ->options(
+                            Role::whereIn('name', ['recepcionista', 'instructor'])
+                                ->pluck('name', 'name')
+                        )
+                        ->searchable()
+                        ->required()
+                        ->helperText('Este campo también define el rol del usuario generado.'),
+
                     TextInput::make('biometrico_id')
                         ->label('ID Biométrico')
                         ->disabled()
-                        ->required(),
+                        ->required()
+                        ->dehydrated()
+                        ->placeholder('Se autollenará con el C.I.'),
+
                     DatePicker::make('fecha_contratacion')
                         ->required()
                         ->label('Fecha de contratación'),
+
                     Select::make('estado')
                         ->label('Estado')
                         ->options([
@@ -101,56 +145,144 @@ class PersonalResource extends Resource
                         ])
                         ->default('activo')
                         ->required(),
+
                     Textarea::make('observaciones')
                         ->label('Observaciones')
                         ->placeholder('Notas adicionales...')
                         ->rows(3),
+
                 ])->columns(2),
+            Section::make('Control de cambios')
+                ->icon('heroicon-o-user-circle')
+                ->collapsible()
+                ->columns(1)
+                ->dehydrated()
+                ->schema([
+                    Placeholder::make('registrado_por')
+                        ->label('Registrado por')
+                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'Aún no registrado'),
+
+                    Placeholder::make('modificado_por')
+                        ->label('Modificado por')
+                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin modificaciones'),
+                ]),
         ]);
     }
 
 
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (isset($data['telefono']) && preg_match('/^\d{8}$/', $data['telefono'])) {
+            $data['telefono'] = '+591' . $data['telefono'];
+        }
+        $data['modificado_por'] = auth()->id();
+        return $data;
+    }
+
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['registrado_por'] = auth()->id();
+        return $data;
+    }
+
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            ImageColumn::make('foto')
-                ->label('Foto')
-                ->circular()
-                ->height(50),
+        return $table
+            ->columns([
+                ImageColumn::make('foto')
+                    ->label('Foto')
+                    ->circular()
+                    ->height(50),
 
-            TextColumn::make('nombre')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('nombre')
+                    ->label('Nombre')
+                    ->icon('heroicon-o-user')
+                    ->searchable()
+                    ->sortable(),
 
-            TextColumn::make('apellido_paterno')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('apellido_paterno')
+                    ->label('Apellido paterno')
+                    ->icon('heroicon-o-user-circle')
+                    ->searchable()
+                    ->sortable(),
 
-            TextColumn::make('apellido_materno')
-                ->searchable()
-                ->sortable(),
+                TextColumn::make('apellido_materno')
+                    ->label('Apellido materno')
+                    ->icon('heroicon-o-user-circle')
+                    ->searchable()
+                    ->sortable(),
 
-            TextColumn::make('cargo')
-                ->sortable(),
+                TextColumn::make('cargo')
+                    ->label('Cargo')
+                    ->icon('heroicon-o-briefcase')
+                    ->sortable(),
 
-            TextColumn::make('ci')
-                ->label('C.I.')
-                ->searchable(),
+                TextColumn::make('ci')
+                    ->label('C.I.')
+                    ->icon('heroicon-o-identification')
+                    ->searchable(),
 
-            TextColumn::make('correo')
-                ->searchable(),
+                TextColumn::make('telefono')
+                    ->label('Teléfono')
+                    ->icon('heroicon-o-device-phone-mobile'),
 
-            TextColumn::make('telefono'),
+                BadgeColumn::make('estado')
+                    ->label('Estado')
+                    ->colors([
+                        'activo' => 'success',
+                        'inactivo' => 'warning',
+                        'baja' => 'danger',
+                    ])
+                    ->icons([
+                        'activo' => 'heroicon-o-check-circle',
+                        'inactivo' => 'heroicon-o-exclamation-circle',
+                        'baja' => 'heroicon-o-x-circle',
+                    ])
+                    ->formatStateUsing(fn($state) => ucfirst($state))
+                    ->sortable(),
 
-            BadgeColumn::make('estado')
-                ->label('Estado')
-                ->colors([
-                    'success' => 'activo',
-                    'warning' => 'inactivo',
-                    'danger' => 'baja',
-                ])
-                ->sortable(),
-        ])
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable(),
+            ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('cargo')
+                    ->label('Cargo')
+                    ->options([
+                        'instructor' => 'Instructor',
+                        'recepcionista' => 'Recepcionista',
+                    ])
+                    ->placeholder('Todos'),
+
+                Tables\Filters\SelectFilter::make('estado')
+                    ->label('Estado')
+                    ->options([
+                        'activo' => 'Activo',
+                        'inactivo' => 'Inactivo',
+                        'baja' => 'De baja',
+                    ])
+                    ->placeholder('Todos'),
+
+                Tables\Filters\Filter::make('fecha_contratacion')
+                    ->label('Fecha de contratación')
+                    ->form([
+                        DatePicker::make('desde')->label('Desde'),
+                        DatePicker::make('hasta')->label('Hasta'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['desde'], fn($q) => $q->whereDate('fecha_contratacion', '>=', $data['desde']))
+                            ->when($data['hasta'], fn($q) => $q->whereDate('fecha_contratacion', '<=', $data['hasta']));
+                    }),
+            ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
@@ -162,7 +294,7 @@ class PersonalResource extends Resource
                     ->modalCancelActionLabel('Cerrar')
                     ->color('info')
                     ->form(fn(Personal $record) => [
-                        Section::make('📸 Foto de Perfil')->schema([
+                        Section::make('Foto de Perfil')->schema([
                             Placeholder::make('foto')
                                 ->label('Foto del Personal')
                                 ->content(fn() => new HtmlString(
@@ -173,22 +305,82 @@ class PersonalResource extends Resource
                                 ->columnSpanFull(),
                         ]),
 
-                        Section::make('👤 Información Personal')->schema([
-                            TextInput::make('nombre')->label('Nombre')->default($record->nombre)->disabled()->placeholder('Nombre completo'),
-                            TextInput::make('apellido_paterno')->label('Apellido Paterno')->default($record->apellido_paterno)->disabled()->placeholder('Primer apellido'),
-                            TextInput::make('apellido_materno')->label('Apellido Materno')->default($record->apellido_materno)->disabled()->placeholder('Segundo apellido'),
-                            TextInput::make('ci')->label('Carnet de Identidad')->default($record->ci)->disabled()->placeholder('Número de C.I.'),
-                            DatePicker::make('fecha_de_nacimiento')->label('Fecha de Nacimiento')->default($record->fecha_de_nacimiento)->disabled()->placeholder('Fecha de nacimiento'),
-                            TextInput::make('telefono')->label('Teléfono')->default($record->telefono)->disabled()->placeholder('Número celular'),
-                            TextInput::make('correo')->label('Correo')->default($record->correo)->disabled()->placeholder('Correo electrónico'),
-                            TextInput::make('direccion')->label('Dirección')->default($record->direccion)->disabled()->placeholder('Dirección de domicilio'),
+                        Section::make('Información Personal')->schema([
+
+                            TextInput::make('nombre')
+                                ->label('Nombre')
+                                ->default($record->nombre)
+                                ->disabled()
+                                ->placeholder('Nombre completo'),
+
+                            TextInput::make('apellido_paterno')
+                                ->label('Apellido Paterno')
+                                ->default($record->apellido_paterno)
+                                ->disabled()
+                                ->placeholder('Primer apellido'),
+
+                            TextInput::make('apellido_materno')
+                                ->label('Apellido Materno')
+                                ->default($record->apellido_materno)
+                                ->disabled()
+                                ->placeholder('Segundo apellido'),
+
+                            TextInput::make('ci')
+                                ->label('Carnet de Identidad')
+                                ->default($record->ci)
+                                ->disabled()
+                                ->placeholder('Número de C.I.'),
+
+                            DatePicker::make('fecha_de_nacimiento')
+                                ->label('Fecha de Nacimiento')
+                                ->default($record->fecha_de_nacimiento)
+                                ->disabled()->placeholder('Fecha de nacimiento'),
+
+                            TextInput::make('telefono')
+                                ->label('Teléfono')
+                                ->default($record->telefono)
+                                ->disabled()
+                                ->placeholder('Número celular'),
+
+                            TextInput::make('correo')
+                                ->label('Correo')
+                                ->default($record->correo)->disabled()
+                                ->placeholder('Correo electrónico'),
+
+                            TextInput::make('direccion')
+                                ->label('Dirección')
+                                ->default($record->direccion)
+                                ->disabled()
+                                ->placeholder('Dirección de domicilio'),
+
                         ])->columns(2),
 
-                        Section::make('💼 Información Laboral')->schema([
-                            TextInput::make('cargo')->label('Cargo')->default($record->cargo)->disabled()->placeholder('Puesto actual'),
-                            TextInput::make('biometrico_id')->label('ID Biométrico')->default($record->biometrico_id)->disabled()->placeholder('ID para marcación'),
-                            DatePicker::make('fecha_contratacion')->label('Fecha de Contratación')->default($record->fecha_contratacion)->disabled()->placeholder('Fecha de ingreso'),
-                            TextInput::make('salario')->label('Salario (Bs.)')->default($record->salario)->disabled()->placeholder('Salario mensual'),
+                        Section::make('Información Laboral')->schema([
+
+                            TextInput::make('cargo')
+                                ->label('Cargo')
+                                ->default($record->cargo)
+                                ->disabled()
+                                ->placeholder('Puesto actual'),
+
+                            TextInput::make('biometrico_id')
+                                ->label('ID Biométrico')
+                                ->default($record->biometrico_id)
+                                ->disabled()
+                                ->placeholder('ID para marcación'),
+
+                            DatePicker::make('fecha_contratacion')
+                                ->label('Fecha de Contratación')
+                                ->default($record->fecha_contratacion)
+                                ->disabled()
+                                ->placeholder('Fecha de ingreso'),
+
+                            TextInput::make('salario')
+                                ->label('Salario (Bs.)')
+                                ->default($record->salario)
+                                ->disabled()
+                                ->placeholder('Salario mensual'),
+
                             Placeholder::make('estado')
                                 ->label('Estado Laboral')
                                 ->content(fn() => new HtmlString(
@@ -199,14 +391,17 @@ class PersonalResource extends Resource
                                         default => $record->estado,
                                     }
                                 )),
+
                         ])->columns(2),
 
-                        Section::make('📝 Observaciones')->schema([
+                        Section::make('Observaciones')->schema([
+
                             Textarea::make('observaciones')
                                 ->label('Notas')
                                 ->default($record->observaciones)
                                 ->disabled()
                                 ->placeholder('Información adicional del personal')
+
                         ]),
                     ])
             ]);

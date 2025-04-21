@@ -9,10 +9,12 @@ class Turno extends Model
 {
     protected $fillable = [
         'nombre',
+        'dia',
         'hora_inicio',
         'hora_fin',
-        'estado',
         'duracion_minutos',
+        'estado',
+        'personal_id',
     ];
 
     protected static function booted(): void
@@ -32,6 +34,10 @@ class Turno extends Model
         });
     }
 
+    public function getDisplayHorarioAttribute(): string
+    {
+        return "{$this->dia} - {$this->nombre} ({$this->hora_inicio} - {$this->hora_fin})";
+    }
 
     public function personal()
     {
