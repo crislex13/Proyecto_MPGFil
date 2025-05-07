@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Facades\Filament;
 
+
 class ClientesResource extends Resource
 {
     protected static ?string $model = Clientes::class;
@@ -344,6 +345,20 @@ class ClientesResource extends Resource
 
                         ]),
                     ]),
+                Action::make('descargarFicha')
+                    ->label('Ficha Cliente')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn($record) => route('reporte.cliente.ficha', ['id' => $record->id]))
+                    ->openUrlInNewTab(),
+
+                Action::make('reporteMensual')
+                    ->label('PDF Mensual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->url(fn($record) => route('clientes.reporte.mensual', $record->id))
+                    ->openUrlInNewTab()
+                    //->visible(fn() => auth()->user()->can('ver_ficha_cliente')),
             ]);
     }
 

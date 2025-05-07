@@ -13,6 +13,9 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\CheckboxList;
 
 class PlanResource extends Resource
 {
@@ -44,8 +47,17 @@ class PlanResource extends Resource
                 ]),
 
             Section::make('Opciones de acceso')
-                ->columns(1)
+                ->columns(2)
                 ->schema([
+
+                    TimePicker::make('hora_inicio')
+                        ->label('Hora de ingreso permitida')
+                        ->nullable(),
+
+                    TimePicker::make('hora_fin')
+                        ->label('Hora de salida permitida')
+                        ->nullable(),
+
                     Toggle::make('ingresos_ilimitados')
                         ->label('¿Permite ingresos ilimitados por día?')
                         ->helperText('Actívalo si el cliente puede ingresar varias veces en el mismo día.')
@@ -76,6 +88,18 @@ class PlanResource extends Resource
                     ->falseIcon('heroicon-o-x-circle')
                     ->trueColor('success')
                     ->falseColor('danger'),
+
+                TextColumn::make('hora_inicio')
+                    ->label('Hora Inicio')
+                    ->icon('heroicon-o-clock')
+                    ->formatStateUsing(fn($state) => $state ? \Carbon\Carbon::parse($state)->format('H:i') : '-')
+                    ->sortable(),
+
+                TextColumn::make('hora_fin')
+                    ->label('Hora Fin')
+                    ->icon('heroicon-o-clock')
+                    ->formatStateUsing(fn($state) => $state ? \Carbon\Carbon::parse($state)->format('H:i') : '-')
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\Filter::make('ingresos_ilimitados')

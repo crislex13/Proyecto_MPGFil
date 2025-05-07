@@ -5,10 +5,12 @@ namespace App\Filament\Widgets;
 use App\Models\PlanCliente;
 use Filament\Widgets\LineChartWidget;
 use Illuminate\Support\Carbon;
+use Filament\Support\Enums\MaxWidth;
+use Filament\Widgets\ChartWidget;
 
 class InscripcionesPorDia extends LineChartWidget
 {
-    protected static ?string $heading = 'Inscripciones - Últimos 30 días';
+    protected static ?string $heading = '📈 Inscripciones - Últimos 30 días';
 
     protected function getData(): array
     {
@@ -18,22 +20,35 @@ class InscripcionesPorDia extends LineChartWidget
             ->orderBy('dia')
             ->get();
 
-        $labels = $data->pluck('dia')->map(fn($d) => Carbon::parse($d)->format('d M'))->toArray();
-        $values = $data->pluck('total')->toArray();
-
         return [
             'datasets' => [
                 [
                     'label' => 'Inscripciones',
-                    'data' => $values,
+                    'data' => $data->pluck('total'),
+                    'borderColor' => '#f59e0b', // Optional: amarillo ámbar
+                    'backgroundColor' => 'rgba(245, 158, 11, 0.2)', // Optional
                 ],
             ],
-            'labels' => $labels,
+            'labels' => $data->pluck('dia')->map(fn($d) => Carbon::parse($d)->format('d M')),
         ];
     }
 
-    public static function canView(): bool
+    protected function getColumns(): int
     {
-        return auth()->user()?->hasRole('admin') || auth()->user()?->hasRole('gerente');
+        return 1;
+    }
+
+    public function getColumnSpan(): int|string|array
+    {
+        return [
+            'default' => 3,
+            'lg' => 2,
+            'xl' => 1,
+        ];
+    }
+
+    protected function getType(): string
+    {
+        return 'line'; // También podés usar 'bar', 'pie', etc.
     }
 }

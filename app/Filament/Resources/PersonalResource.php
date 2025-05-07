@@ -22,6 +22,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Spatie\Permission\Models\Role;
+use Filament\Tables\Actions\Action;
 
 class PersonalResource extends Resource
 {
@@ -403,7 +404,22 @@ class PersonalResource extends Resource
                                 ->placeholder('Información adicional del personal')
 
                         ]),
-                    ])
+                    ]),
+                Action::make('Descargar PDF')
+                    ->label('Descargar PDF')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(fn($record) => route('reporte.personal.ficha', ['id' => $record->id]))
+                    ->openUrlInNewTab(),
+
+                Action::make('reporteMensual')
+                    ->label('Ficha Mensual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->url(fn($record) => route('personal.reporte.mensual', ['id' => $record->id]))
+                    ->openUrlInNewTab()
+                    //->visible(fn() => auth()->user()->can('ver_ficha_personal')),
+
             ]);
     }
 

@@ -33,7 +33,7 @@ class Asistencia extends Model
     ];
 
     // 📌 Relación polimórfica con Cliente o Personal
-    public function asistible(): MorphTo
+    public function asistible()
     {
         return $this->morphTo();
     }
@@ -76,4 +76,15 @@ class Asistencia extends Model
     {
         return $this->belongsTo(SesionAdicional::class);
     }
+
+    public function cliente()
+    {
+        return $this->morphTo(__FUNCTION__, 'asistible_type', 'asistible_id');
+    }
+
+    public function personal()
+    {
+        return $this->morphTo(__FUNCTION__, 'asistible_type', 'asistible_id');
+    }
+
 }

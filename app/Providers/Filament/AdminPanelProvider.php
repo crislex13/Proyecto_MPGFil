@@ -30,20 +30,29 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            //->navigation(fn() => !in_array(auth()->user()?->getRoleNames()->first(), ['cliente', 'instructor']))->login()
+            //->navigation(fn () => auth()->check() && !in_array(auth()->user()->getRoleNames()->first(), ['cliente', 'instructor']))
             ->colors([
                 'primary' => Color::Amber,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            //->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->pages([
-                Pages\Dashboard::class,
+                \App\Filament\Pages\InstructorDashboard::class,
+                \App\Filament\Pages\ClienteDashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
-            ->widgets([
-                //Widgets\AccountWidget::class,
-                //Widgets\FilamentInfoWidget::class,
-                //hacer estadisticas aqui
-            ])
+            ->widgets(
+                in_array(auth()->user()?->getRoleNames()->first(), ['cliente', 'instructor'])
+                ? []
+                : [
+                    \App\Filament\Widgets\ResumenEstadistico::class,
+                    \App\Filament\Widgets\FlujoCajaDiaWidget::class,
+                    \App\Filament\Widgets\InstructorTopWidget::class,
+                    \App\Filament\Widgets\ProductoTopWidget::class,
+                    \App\Filament\Widgets\FlujoCajaSemana::class,
+                ]
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -53,13 +62,27 @@ class AdminPanelProvider extends PanelProvider
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
+                \App\Http\Middleware\RedireccionPorRol::class,
                 DispatchServingFilamentEvent::class,
+
             ])
             ->authMiddleware([
                 Authenticate::class,
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),
-            ]);
+            ])
+            ->renderHook('panels::body.end', fn() => <<<HTML
+    <style>
+        /* Estilo global para que las tablas puedan hacer scroll horizontal */
+        .fi-ta {
+            overflow-x: auto !important;
+        }
+
+        .fi-ta table {
+            min-width: 1000px; /* Ajusta según cuántas columnas tengas */
+        }
+    </style>
+HTML);
     }
 }

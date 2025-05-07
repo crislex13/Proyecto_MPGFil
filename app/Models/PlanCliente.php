@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use App\Models\PermisoCliente;
+
 
 class PlanCliente extends Model
 {
@@ -23,6 +25,13 @@ class PlanCliente extends Model
         'metodo_pago',
         'comprobante',
         'estado',
+        'dias_permitidos',
+    ];
+
+    protected $casts = [
+        'fecha_inicio' => 'date',
+        'fecha_final' => 'date',
+        'dias_permitidos' => 'array',
     ];
 
     protected static function booted()
@@ -32,7 +41,26 @@ class PlanCliente extends Model
         });
 
         static::updating(function ($plan) {
+            // Recalcular estado
             $plan->estado = $plan->calcularEstado();
+
+            // Si cambia la fecha de inicio
+            if ($plan->isDirty('fecha_inicio')) {
+                $fechaInicio = Carbon::parse($plan->fecha_inicio);
+                $duracion = $plan->plan?->duracion_dias ?? 0;
+
+                // Buscar permisos aprobados dentro del nuevo rango
+                $permisosExtra = PermisoCliente::where('cliente_id', $plan->cliente_id)
+                    ->where('estado', 'aprobado')
+                    ->whereBetween('fecha', [
+                        $fechaInicio,
+                        $fechaInicio->copy()->addDays($duracion - 1)
+                    ])
+                    ->count();
+
+                // Nueva fecha final = duración del plan + días extra - 1
+                $plan->fecha_final = $fechaInicio->copy()->addDays($duracion + $permisosExtra - 1);
+            }
         });
 
         static::saving(function ($plan) {
@@ -93,12 +121,28 @@ class PlanCliente extends Model
             return 'bloqueado';
         }
 
-        if (Carbon::parse($this->fecha_final)->isPast()) {
+        $fechaInicio = Carbon::parse($this->fecha_inicio);
+        $duracion = $this->plan?->duracion_dias ?? 0;
+
+        // Fecha base (sin permisos)
+        $fechaFinalBase = $fechaInicio->copy()->addDays($duracion - 1);
+
+        // Contar permisos aprobados dentro del rango original
+        $permisosExtra = PermisoCliente::where('cliente_id', $this->cliente_id)
+            ->where('estado', 'aprobado')
+            ->whereBetween('fecha', [$fechaInicio, $fechaFinalBase])
+            ->count();
+
+        // Nueva fecha final considerando permisos
+        $fechaFinalConPermisos = $fechaFinalBase->copy()->addDays($permisosExtra);
+
+        // Comparar con fecha actual
+        if (now()->greaterThan($fechaFinalConPermisos)) {
             return 'vencido';
         }
 
         if ($this->saldo > 0) {
-            return 'con deuda';
+            return 'deuda';
         }
 
         return 'vigente';

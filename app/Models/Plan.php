@@ -15,10 +15,14 @@ class Plan extends Model
         'nombre',
         'duracion_dias',
         'ingresos_ilimitados',
+        'hora_inicio',
+        'hora_fin',
     ];
 
     protected $casts = [
         'ingresos_ilimitados' => 'boolean',
+        'hora_inicio' => 'datetime:H:i',
+        'hora_fin' => 'datetime:H:i',
     ];
 
     public function clientes(): HasMany
@@ -35,5 +39,9 @@ class Plan extends Model
     {
         return $this->ingresos_ilimitados;
     }
-}
 
+    public function tieneRestriccionHoraria(): bool
+{
+    return $this->hora_inicio && $this->hora_fin;
+}
+}

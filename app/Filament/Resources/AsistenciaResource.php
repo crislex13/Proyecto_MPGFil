@@ -19,7 +19,10 @@ use Filament\Tables\Actions\Action as TableAction;
 
 use Filament\Tables\Actions\Action;
 use Filament\Actions\Action as FormAction;
-
+use Filament\Tables\Filters\DateFilter;
+use Filament\Tables\Filters\Filter;
+use Filament\Forms\Components\DatePicker;
+use Illuminate\Database\Eloquent\Builder;
 
 
 class AsistenciaResource extends Resource
@@ -44,6 +47,9 @@ class AsistenciaResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+
+            ->persistSearchInSession()
+            ->searchPlaceholder('Buscar por nombre o CI')
             ->columns([
                 ImageColumn::make('foto_url')
                     ->label('Foto')
@@ -52,8 +58,21 @@ class AsistenciaResource extends Resource
 
                 TextColumn::make('nombre_completo')
                     ->label('Nombre')
-                    ->icon('heroicon-o-user')
-                    ->getStateUsing(fn($record) => $record?->nombre_completo ?? '—'),
+                    ->getStateUsing(
+                        fn($record) =>
+                        $record->cliente?->nombre_completo ??
+                        $record->personal?->nombre_completo ??
+                        '—'
+                    ),
+
+                TextColumn::make('ci')
+                    ->label('CI')
+                    ->icon('heroicon-o-identification')
+                    ->getStateUsing(
+                        fn($record) =>
+                        $record->asistible?->ci ?? '—'
+                    )
+                    ->extraAttributes(['style' => 'width: 100px; white-space: nowrap']),
 
                 TextColumn::make('rol')
                     ->label('Rol')
@@ -84,21 +103,71 @@ class AsistenciaResource extends Resource
                         'atrasado' => 'warning',
                         'permiso' => 'info',
                         'acceso_denegado' => 'danger',
-                        default => 'gray',
+                        'falta' => 'gray',
+                        default => 'secondary',
                     }),
+
+                TextColumn::make('observacion')
+                    ->label('Observación')
+                    ->icon('heroicon-o-information-circle')
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('origen')
                     ->label('Origen')
-                    ->icon('heroicon-o-finger-print')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->icon('heroicon-o-finger-print'),
 
                 TextColumn::make('usuarioRegistro.name')
                     ->label('Registrado por')
-                    ->icon('heroicon-o-user-circle')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->icon('heroicon-o-user-circle'),
+
+                TextColumn::make('asistible_type')
+                    ->label('Buscador')
+                    ->searchable()
+                    ->visible(false), // Oculta esta columna
             ])
 
             ->defaultSort('hora_entrada', 'desc')
+
+            ->filters([
+                SelectFilter::make('estado')
+                    ->label('Estado')
+                    ->options([
+                        'puntual' => 'Puntual',
+                        'atrasado' => 'Atrasado',
+                        'permiso' => 'Permiso',
+                        'acceso_denegado' => 'Acceso Denegado',
+                        'falta' => 'Falta',
+                    ]),
+
+                SelectFilter::make('tipo_asistencia')
+                    ->label('Tipo')
+                    ->options([
+                        'plan' => 'Plan',
+                        'personal' => 'Personal',
+                        'sesion' => 'Sesión adicional',
+                    ]),
+
+                SelectFilter::make('origen')
+                    ->label('Origen')
+                    ->options([
+                        'manual' => 'Manual',
+                        'biometrico' => 'Biométrico',
+                        'automatico' => 'Automático',
+                    ]),
+
+                Filter::make('fecha')
+                    ->form([
+                        DatePicker::make('fecha')
+                            ->label('Selecciona una fecha'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        return $query
+                            ->when($data['fecha'], fn($query, $date) =>
+                                $query->whereDate('fecha', $date));
+                    })
+                    ->label('Filtrar por Fecha'),
+            ])
 
             ->actions([
                 TableAction::make('registrar_salida')
@@ -115,6 +184,7 @@ class AsistenciaResource extends Resource
                         'hora_salida' => now(),
                     ])),
             ])
+
 
             ->headerActions([
                 Action::make('registrarAsistencia')
@@ -147,7 +217,23 @@ class AsistenciaResource extends Resource
                                 ->send();
                         }
                     }),
-            ]);
+            ])
+            ->modifyQueryUsing(function (Builder $query, $livewire) {
+                $search = $livewire->getTableSearch();
+
+                if ($search) {
+                    $query->whereHas('asistible', function ($sub) use ($search) {
+                        $sub->where(function ($s) use ($search) {
+                            $s->where('nombre', 'like', "%{$search}%")
+                                ->orWhere('apellido_paterno', 'like', "%{$search}%")
+                                ->orWhere('apellido_materno', 'like', "%{$search}%")
+                                ->orWhere('ci', 'like', "%{$search}%");
+                        });
+                    });
+                }
+
+                return $query;
+            });
     }
 
     public static function getPages(): array

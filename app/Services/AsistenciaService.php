@@ -13,29 +13,100 @@ class AsistenciaService
     {
         $fecha = $horaEntrada->toDateString();
 
-        $yaRegistrado = Asistencia::whereDate('fecha', $fecha)
-            ->where('asistible_id', $cliente->id)
-            ->where('asistible_type', Clientes::class)
-            ->whereTime('hora_entrada', $horaEntrada->format('H:i:s'))
-            ->exists();
+        // 1️⃣ Buscar sesiones adicionales del cliente para ese día
+        $sesiones = $cliente->sesionesAdicionales()
+            ->whereDate('fecha', $fecha)
+            ->get();
 
-        if ($yaRegistrado) {
+        foreach ($sesiones as $sesion) {
+            $horaInicio = Carbon::parse($sesion->hora_inicio)->subMinutes(15); // permite marcar desde 15 min antes
+            $horaFin = Carbon::parse($sesion->hora_fin);
+
+            if ($horaEntrada->between($horaInicio, $horaFin)) {
+                // 🔍 Validamos si ya registró asistencia a esta sesión
+                $yaRegistrado = Asistencia::where('sesion_adicional_id', $sesion->id)
+                    ->where('asistible_id', $cliente->id)
+                    ->where('asistible_type', Clientes::class)
+                    ->exists();
+
+                if ($yaRegistrado)
+                    return;
+
+                // 🟢 Determinar si fue puntual o atrasado
+                $horaExacta = Carbon::parse($sesion->hora_inicio);
+                $estado = $horaEntrada->lte($horaExacta) ? 'puntual' : 'atrasado';
+
+                // 📝 Registrar asistencia a la sesión
+                Asistencia::create([
+                    'asistible_id' => $cliente->id,
+                    'asistible_type' => Clientes::class,
+                    'tipo_asistencia' => 'sesion',
+                    'sesion_adicional_id' => $sesion->id,
+                    'fecha' => $fecha,
+                    'hora_entrada' => $horaEntrada,
+                    'estado' => $estado,
+                    'origen' => 'biometrico',
+                    'usuario_registro_id' => null,
+                ]);
+
+                return;
+            }
+        }
+
+        // 2️⃣ Si el cliente tiene sesión hoy pero está fuera del horario
+        if ($sesiones->count()) {
+            // Verificar si ya se registró un intento fallido
+            $yaFallido = Asistencia::where('fecha', $fecha)
+                ->where('asistible_id', $cliente->id)
+                ->where('asistible_type', Clientes::class)
+                ->where('tipo_asistencia', 'sesion')
+                ->where('estado', 'acceso_denegado')
+                ->exists();
+
+            if (!$yaFallido) {
+                Asistencia::create([
+                    'asistible_id' => $cliente->id,
+                    'asistible_type' => Clientes::class,
+                    'tipo_asistencia' => 'sesion',
+                    'fecha' => $fecha,
+                    'hora_entrada' => $horaEntrada,
+                    'estado' => 'acceso_denegado',
+                    'origen' => 'biometrico',
+                    'usuario_registro_id' => null,
+                    'observacion' => 'Sesión adicional fuera de horario permitido',
+                ]);
+            }
+
             return;
         }
 
+        // 3️⃣ Si no tiene sesión, verificar si puede ingresar por plan
         [$puedeIngresar, $mensaje] = $cliente->puedeRegistrarAsistenciaHoy();
 
         if (!$puedeIngresar) {
+            // ❌ Registrar intento fallido con motivo
+            Asistencia::create([
+                'asistible_id' => $cliente->id,
+                'asistible_type' => Clientes::class,
+                'tipo_asistencia' => 'plan',
+                'fecha' => $fecha,
+                'hora_entrada' => $horaEntrada,
+                'estado' => 'acceso_denegado',
+                'origen' => 'biometrico',
+                'usuario_registro_id' => null,
+                'observacion' => $mensaje,
+            ]);
             return;
         }
 
+        // 4️⃣ Si todo está bien, registrar asistencia normal por plan
         Asistencia::create([
             'asistible_id' => $cliente->id,
             'asistible_type' => Clientes::class,
             'tipo_asistencia' => 'plan',
             'fecha' => $fecha,
             'hora_entrada' => $horaEntrada,
-            'estado' => 'puntual',
+            'estado' => 'puntual', // Siempre puntual en planes, como se definió
             'origen' => 'biometrico',
             'usuario_registro_id' => null,
         ]);

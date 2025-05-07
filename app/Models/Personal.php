@@ -10,6 +10,7 @@ use Carbon\Carbon;
 
 class Personal extends Model
 {
+    protected $table = 'personals';
     protected $fillable = [
         'nombre',
         'apellido_paterno',
@@ -76,40 +77,34 @@ class Personal extends Model
         if (!$turno) {
             return [
                 'permitido' => false,
-                'mensaje' => 'No tiene turno asignado para hoy.',
+                'mensaje' => 'No tiene turno activo en este momento.',
             ];
         }
 
         $ahora = now();
         $horaInicio = Carbon::createFromFormat('H:i:s', $turno->hora_inicio);
         $horaFin = Carbon::createFromFormat('H:i:s', $turno->hora_fin);
-        $horaPermitida = $horaInicio->copy()->subHour(); // puede marcar 1h antes
+        $horaPermitida = $horaInicio->copy()->subHour(); // puede marcar 1 hora antes
 
         if ($ahora->lt($horaPermitida)) {
             return [
                 'permitido' => false,
-                'mensaje' => 'Aún no puede registrar su entrada.',
+                'mensaje' => 'Aún no puede registrar su entrada. Espere hasta las ' . $horaPermitida->format('H:i') . '.',
             ];
         }
 
         if ($ahora->gt($horaFin)) {
             return [
                 'permitido' => false,
-                'mensaje' => 'El turno ya finalizó.',
+                'mensaje' => 'El turno ya ha finalizado. No se puede registrar entrada.',
             ];
         }
-
-        \Log::info('Depuración estado de entrada', [
-            'ahora' => $ahora->toDateTimeString(),
-            'horaInicio' => $horaInicio->toDateTimeString(),
-            'comparación' => $ahora->lte($horaInicio),
-        ]);
 
         $estado = $ahora->lte($horaInicio) ? 'puntual' : 'atrasado';
 
         return [
             'permitido' => true,
-            'mensaje' => 'Puede registrar asistencia.',
+            'mensaje' => 'Puede registrar asistencia. Estado: ' . ucfirst($estado),
             'estado' => $estado,
             'turno' => $turno,
         ];
@@ -155,6 +150,16 @@ class Personal extends Model
     public function modificadoPor()
     {
         return $this->belongsTo(\App\Models\User::class, 'modificado_por');
+    }
+
+    public function getFotoPathForPdfAttribute()
+    {
+        return $this->foto ? public_path('storage/' . $this->foto) : public_path('images/default-user.png');
+    }
+
+    public function pagos()
+    {
+        return $this->hasMany(\App\Models\PagoPersonal::class, 'personal_id');
     }
 
 }

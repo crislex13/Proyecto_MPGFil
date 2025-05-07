@@ -28,6 +28,10 @@ use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\HtmlString;
 use App\Filament\Resources\PlanClienteResource\RelationManagers\SesionesAdicionalesRelationManager;
 use Filament\Notifications\Notification;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Get;
+
 
 class PlanClienteResource extends Resource
 {
@@ -46,6 +50,83 @@ class PlanClienteResource extends Resource
 
     public static function form(Form $form): Form
     {
+        $actualizarMontos = function (callable $get, callable $set) {
+            $precio = floatval($get('precio_plan') ?? 0);
+            $cuenta = floatval($get('a_cuenta') ?? 0);
+            $saldo = max($precio - $cuenta, 0);
+
+            $set('total', $precio);
+            $set('saldo', $saldo);
+            $set('estado', $saldo <= 0 ? 'vigente' : 'deuda');
+        };
+
+        $calcularFechaFinal = function (callable $get, callable $set) {
+            $plan = \App\Models\Plan::find($get('plan_id'));
+            $fechaInicio = $get('fecha_inicio') ? Carbon::parse($get('fecha_inicio')) : null;
+            $diasPermitidos = (array) $get('dias_permitidos');
+
+            if (!$plan || !$fechaInicio || $fechaInicio->year < 2020) {
+                $set('fecha_final', null);
+                return;
+            }
+
+            $duracion = $plan->duracion_dias ?? 0;
+
+            // Si se seleccionaron los 7 días, usamos días corridos
+            if (count($diasPermitidos) === 7) {
+                $fechaFinal = $fechaInicio->copy()->addDays($duracion - 1);
+                $set('fecha_final', $fechaFinal->toDateString());
+                return;
+            }
+
+            // Si hay días permitidos pero no son 7
+            if (!empty($diasPermitidos)) {
+                $diasPermitidosIndices = collect($diasPermitidos)->map(function ($dia) {
+                    return match ($dia) {
+                        'lunes' => 1,
+                        'martes' => 2,
+                        'miercoles' => 3,
+                        'jueves' => 4,
+                        'viernes' => 5,
+                        'sabado' => 6,
+                        'domingo' => 0,
+                        default => null,
+                    };
+                })->filter()->toArray();
+
+                if (empty($diasPermitidosIndices)) {
+                    Notification::make()
+                        ->title('⚠️ Días inválidos')
+                        ->body('No se pudo calcular la fecha final. Verifica los días seleccionados.')
+                        ->warning()
+                        ->send();
+                    $set('fecha_final', null);
+                    return;
+                }
+
+                $diasContados = 0;
+                $fecha = $fechaInicio->copy();
+                $limiteMaximo = 365;
+
+                while ($diasContados < $duracion && $limiteMaximo > 0) {
+                    if (in_array($fecha->dayOfWeek, $diasPermitidosIndices)) {
+                        $diasContados++;
+                    }
+                    $fecha->addDay();
+                    $limiteMaximo--;
+                }
+
+                $fechaFinal = $fecha->subDay();
+                $set('fecha_final', $fechaFinal->toDateString());
+                return;
+            }
+
+            // Si no se seleccionó nada, asumimos días corridos
+            $fechaFinal = $fechaInicio->copy()->addDays($duracion - 1);
+            $set('fecha_final', $fechaFinal->toDateString());
+        };
+
+
         return $form->schema([
             Section::make('Información del Cliente')
                 ->icon('heroicon-o-user')
@@ -68,7 +149,7 @@ class PlanClienteResource extends Resource
                         ->options(\App\Models\Plan::pluck('nombre', 'id'))
                         ->required()
                         ->reactive()
-                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                        ->afterStateUpdated(function ($state, callable $get, callable $set) use ($actualizarMontos) {
                             $planId = $state;
                             $disciplinaId = $get('disciplina_id');
 
@@ -77,17 +158,23 @@ class PlanClienteResource extends Resource
                                     ->where('disciplina_id', $disciplinaId)
                                     ->value('precio');
 
-                                if ($precio !== null) {
-                                    $set('precio_plan', $precio);
-                                } else {
-                                    $set('precio_plan', 0);
+                                $set('precio_plan', $precio ?? 0);
+
+                                if ($precio === null) {
                                     Notification::make()
                                         ->title('⚠️ Precio no asignado')
                                         ->body('No se encontró un precio para este Plan y Disciplina.')
                                         ->warning()
                                         ->send();
                                 }
+                            } else {
+                                $set('precio_plan', 0);
                             }
+
+                            $tipoAsistencia = \App\Models\Plan::find($planId)?->tipo_asistencia;
+                            $set('tipo_asistencia', $tipoAsistencia);
+
+                            $actualizarMontos($get, $set);
                         }),
 
                     Select::make('disciplina_id')
@@ -95,7 +182,7 @@ class PlanClienteResource extends Resource
                         ->options(\App\Models\Disciplina::pluck('nombre', 'id'))
                         ->required()
                         ->reactive()
-                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+                        ->afterStateUpdated(function ($state, callable $get, callable $set) use ($actualizarMontos) {
                             $disciplinaId = $state;
                             $planId = $get('plan_id');
 
@@ -115,7 +202,137 @@ class PlanClienteResource extends Resource
                                         ->send();
                                 }
                             }
+
+                            $actualizarMontos($get, $set);
                         }),
+
+                    CheckboxList::make('dias_permitidos')
+                        ->label('Días permitidos para asistir')
+                        ->options([
+                            'lunes' => 'Lunes',
+                            'martes' => 'Martes',
+                            'miercoles' => 'Miércoles',
+                            'jueves' => 'Jueves',
+                            'viernes' => 'Viernes',
+                            'sabado' => 'Sábado',
+                            'domingo' => 'Domingo',
+                        ])
+                        ->columns(3)
+                        ->required()
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) use ($calcularFechaFinal) {
+                            $fecha = $get('fecha_inicio');
+
+                            try {
+                                $carbonFecha = Carbon::parse($fecha);
+                                if ($carbonFecha->year < 2020) {
+                                    throw new \Exception('Fecha inválida');
+                                }
+
+                                $calcularFechaFinal($get, $set);
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('⚠️ Atención')
+                                    ->body('Seleccione primero una fecha de inicio válida para calcular la fecha final.')
+                                    ->warning()
+                                    ->send();
+
+                                $set('fecha_final', null);
+                            }
+                        })
+                        ->helperText('Seleccione los días en que el cliente podrá asistir si el plan lo permite'),
+
+                    DatePicker::make('fecha_inicio')
+                        ->label('Fecha inicio')
+                        ->required()
+                        ->reactive()
+                        ->extraAttributes([
+                            'id' => 'fecha_inicio_input',
+                            'onkeydown' => 'event.preventDefault();', // bloquea el tipeo manual
+                        ])
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) use ($calcularFechaFinal) {
+                            try {
+                                $fecha = Carbon::parse($state);
+
+                                if ($fecha->year < 2020) {
+                                    Notification::make()
+                                        ->title('⚠️ Fecha inválida')
+                                        ->body('Por favor, seleccione una fecha válida desde el calendario.')
+                                        ->warning()
+                                        ->send();
+
+                                    $set('fecha_inicio', null);
+                                    $set('fecha_final', null);
+                                    return;
+                                }
+
+                                $calcularFechaFinal($get, $set); // solo si todo está correcto
+                            } catch (\Exception $e) {
+                                Notification::make()
+                                    ->title('⚠️ Fecha inválida')
+                                    ->body('La fecha ingresada no es válida.')
+                                    ->danger()
+                                    ->send();
+
+                                $set('fecha_inicio', null);
+                                $set('fecha_final', null);
+                            }
+                        }),
+
+                    DatePicker::make('fecha_final')
+                        ->label('Fecha final')
+                        ->disabled()
+                        ->dehydrated(true),
+
+                ]),
+
+            Section::make('Costos del Plan')
+                ->icon('heroicon-o-banknotes')
+                ->columns(3)
+                ->schema([
+                    TextInput::make('precio_plan')
+                        ->label('Precio del Plan')
+                        ->readOnly()
+                        ->numeric()
+                        ->default(0)
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) use ($actualizarMontos) {
+                            $actualizarMontos($get, $set);
+                        }),
+
+                    TextInput::make('a_cuenta')
+                        ->label('A cuenta')
+                        ->required()
+                        ->numeric()
+                        ->minValue(0)
+                        ->live(onBlur: true)
+                        ->extraAttributes([
+                            'oninput' => "this.value = this.value.replace(/[^0-9.]/g, '')",
+                            'onkeydown' => "if(event.key === '-' || event.key === 'e') event.preventDefault();",
+                        ])
+                        ->afterStateUpdated(function ($state, callable $set, callable $get) use ($actualizarMontos) {
+                            $precio = floatval($get('precio_plan'));
+                            $cuenta = floatval($state);
+
+                            if ($cuenta > $precio) {
+                                Notification::make()
+                                    ->title('⚠️ Monto inválido')
+                                    ->body('El monto "A cuenta" no puede ser mayor al precio del plan.')
+                                    ->danger()
+                                    ->send();
+
+                                $set('a_cuenta', $precio); // corrige el valor automáticamente al máximo permitido
+                            }
+
+                            $actualizarMontos($get, $set);
+                        })
+                        ->afterStateHydrated(fn(callable $get, callable $set) => $actualizarMontos($get, $set)),
+
+                    TextInput::make('total')
+                        ->label('Total')
+                        ->readOnly(),
+
+                    TextInput::make('saldo')
+                        ->label('Saldo')
+                        ->readOnly(),
 
                     Select::make('estado')
                         ->label('Estado del plan')
@@ -128,79 +345,6 @@ class PlanClienteResource extends Resource
                         ->required()
                         ->native(false)
                         ->columnSpanFull(),
-
-                    DatePicker::make('fecha_inicio')
-                        ->label('Fecha inicio')
-                        ->required()
-                        ->reactive()
-                        ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
-                            $plan = \App\Models\Plan::find($get('plan_id'));
-                            if ($plan && $state) {
-                                $fechaFinal = Carbon::parse($state)->addDays($plan->duracion_dias)->subDay();
-                                $set('fecha_final', $fechaFinal->toDateString());
-                            }
-                        }),
-
-                    DatePicker::make('fecha_final')
-                        ->label('Fecha final')
-                        ->disabled()
-                        ->dehydrated(true),
-                ]),
-
-            Section::make('Costos del Plan')
-                ->icon('heroicon-o-banknotes')
-                ->columns(3)
-                ->schema([
-                    TextInput::make('precio_plan')
-                        ->label('Precio del Plan')
-                        ->readOnly()
-                        ->numeric()
-                        ->default(0),
-
-                    TextInput::make('a_cuenta')
-                        ->label('A cuenta')
-                        ->numeric()
-                        ->minValue(0)
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $precioPlan = floatval($get('precio_plan'));
-                            $aCuenta = floatval($state);
-
-                            if ($precioPlan <= 0) {
-                                Notification::make()
-                                    ->title('⚠️ Precio inválido')
-                                    ->body('El precio del plan debe ser mayor a 0.')
-                                    ->warning()
-                                    ->send();
-                                return;
-                            }
-
-                            if ($aCuenta > $precioPlan) {
-                                Notification::make()
-                                    ->title('⚠️ Monto inválido')
-                                    ->body('El monto "a cuenta" no puede ser mayor al precio del plan.')
-                                    ->danger()
-                                    ->send();
-
-                                $set('a_cuenta', $precioPlan);
-                                $set('saldo', 0);
-                                $set('total', $precioPlan);
-                                return;
-                            }
-
-                            $saldo = $precioPlan - $aCuenta;
-
-                            $set('total', $precioPlan);
-                            $set('saldo', max($saldo, 0));
-                        }),
-
-                    TextInput::make('total')
-                        ->label('Total')
-                        ->readOnly(),
-
-                    TextInput::make('saldo')
-                        ->label('Saldo')
-                        ->readOnly(),
                 ]),
 
             Section::make('Pago')
@@ -227,6 +371,19 @@ class PlanClienteResource extends Resource
         ]);
     }
 
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $precio = floatval($data['precio_plan'] ?? 0);
+        $cuenta = floatval($data['a_cuenta'] ?? 0);
+
+        $data['total'] = $precio;
+        $data['saldo'] = $precio - $cuenta;
+        $data['estado'] = $data['saldo'] <= 0 ? 'vigente' : 'deuda';
+
+        return $data;
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -247,7 +404,7 @@ class PlanClienteResource extends Resource
                                 ->orWhere('apellido_materno', 'like', "%{$search}%");
                         });
                     })
-                    ->sortable(),
+                    ->sortable(['nombre', 'apellido_paterno', 'apellido_materno']),
 
                 TextColumn::make('plan.nombre')
                     ->label('Plan')
@@ -274,13 +431,14 @@ class PlanClienteResource extends Resource
                     ->icon('heroicon-o-adjustments-vertical')
                     ->badge()
                     ->color(fn(?string $state): string => match ($state) {
-                        'vigente' => 'success',      // Verde
-                        'bloqueado' => 'danger',     // Rojo
-                        'vencido' => 'warning',      // Naranja
-                        default => 'gray',
+                        'vigente' => 'success',
+                        'bloqueado' => 'danger',
+                        'vencido' => 'warning',
+                        'deuda' => 'gray',
                     })
                     ->sortable()
-                    ->formatStateUsing(fn(?string $state) => ucfirst($state)),
+                    ->formatStateUsing(fn(?string $state) => $state === 'deuda' ? 'Con deuda' : ucfirst($state)),
+
 
                 TextColumn::make('total')
                     ->label('Total')

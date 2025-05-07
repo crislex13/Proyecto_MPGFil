@@ -19,6 +19,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
+use Filament\Tables\Actions\Action;
 
 class ProductoResource extends Resource
 {
@@ -197,6 +198,31 @@ class ProductoResource extends Resource
                     ->icon('heroicon-o-pencil-square')
                     ->searchable()
                     ->sortable(),
+            ])
+            ->headerActions([
+                Action::make('Reporte Diario')
+                    ->label('Reporte Diario')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(route('reporte.productos.diario'))
+                    ->openUrlInNewTab(),
+                    //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
+
+                Action::make('Reporte Mensual')
+                    ->label('Reporte Mensual')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('warning')
+                    ->url(route('reporte.productos.mensual'))
+                    ->openUrlInNewTab(),
+                    //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
+
+                Action::make('Reporte Anual')
+                    ->label('Reporte Anual')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('primary')
+                    ->url(route('reporte.productos.anual'))
+                    ->openUrlInNewTab(),
+                    //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('categoria_id')

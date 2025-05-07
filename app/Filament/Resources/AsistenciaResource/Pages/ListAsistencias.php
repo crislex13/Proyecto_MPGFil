@@ -12,6 +12,7 @@ use App\Filament\Resources\AsistenciaResource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\HtmlString;
 use Filament\Actions\Action;
+use App\Models\PlanCliente;
 
 class ListAsistencias extends ListRecords
 {
@@ -24,7 +25,6 @@ class ListAsistencias extends ListRecords
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Este método lo puedes dejar si no haces create por formulario directo
         return $data;
     }
 
@@ -64,6 +64,10 @@ class ListAsistencias extends ListRecords
                 $fin = \Carbon\Carbon::parse($sesion->hora_fin);
 
                 if ($ahora->between($inicio, $fin)) {
+                    // Determinar si llegó puntual o atrasado
+                    $horaSesion = \Carbon\Carbon::parse($sesion->hora_inicio);
+                    $estado = $ahora->lte($horaSesion) ? 'puntual' : 'atrasado';
+
                     Asistencia::create([
                         'asistible_id' => $cliente->id,
                         'asistible_type' => Clientes::class,
@@ -71,57 +75,105 @@ class ListAsistencias extends ListRecords
                         'sesion_adicional_id' => $sesion->id,
                         'fecha' => today(),
                         'hora_entrada' => $ahora,
-                        'estado' => 'puntual',
+                        'estado' => $estado, // ahora es puntual o atrasado según la hora exacta de la sesión
                         'origen' => 'manual',
                         'usuario_registro_id' => auth()->id(),
+                        'observacion' => "Asistencia a sesión adicional registrada como $estado.",
                     ]);
 
                     Notification::make()
                         ->title('✅ Asistencia registrada')
-                        ->body("Se registró asistencia a tu sesión adicional.")
+                        ->body("Se registró asistencia a tu sesión adicional ($estado).")
                         ->success()
                         ->send();
 
                     $this->reset('ci', 'cliente', 'personal', 'mostrarModal');
-                    return; // <- Este return es crucial
+                    return;
                 }
             }
+
+            // ❌ El cliente tiene sesiones hoy, pero está fuera de horario
+            Asistencia::create([
+                'asistible_id' => $cliente->id,
+                'asistible_type' => Clientes::class,
+                'tipo_asistencia' => 'sesion',
+                'fecha' => today(),
+                'hora_entrada' => now(),
+                'estado' => 'acceso_denegado',
+                'origen' => 'manual',
+                'usuario_registro_id' => auth()->id(),
+                'observacion' => 'Sesión adicional fuera de horario permitido',
+            ]);
 
             Notification::make()
                 ->title('⏰ Fuera de horario')
                 ->body('Tienes sesiones hoy, pero no estás dentro del horario permitido.')
                 ->warning()
                 ->send();
+
+            $this->reset('ci', 'cliente', 'personal', 'mostrarModal');
             return;
         }
 
-        // 🔍 2. Si no hay sesiones válidas, verificar plan activo
+        // 🔍 2. Si no tiene sesión, se verifica su plan activo
         [$puedeIngresar, $mensaje] = $cliente->puedeRegistrarAsistenciaHoy();
 
         if (!$puedeIngresar) {
+            // ❌ El cliente no cumple condiciones para ingresar
+            Asistencia::create([
+                'asistible_id' => $cliente->id,
+                'asistible_type' => Clientes::class,
+                'tipo_asistencia' => 'plan',
+                'fecha' => today(),
+                'hora_entrada' => now(),
+                'estado' => 'acceso_denegado',
+                'origen' => 'manual',
+                'usuario_registro_id' => auth()->id(),
+                'observacion' => $mensaje,
+            ]);
+
             Notification::make()
                 ->title('🚫 Acceso denegado')
                 ->body($mensaje)
                 ->danger()
                 ->send();
+
+            $this->reset('ci', 'cliente', 'personal', 'mostrarModal');
             return;
         }
 
-        // ✅ 3. Registrar por plan si aplica
+        // ✅ 3. Ingreso por plan activo
+        $plan = $cliente->planesCliente()
+            ->whereDate('fecha_inicio', '<=', now())
+            ->whereDate('fecha_final', '>=', now())
+            ->whereIn('estado', ['vigente', 'deuda'])
+            ->with('plan')
+            ->latest('fecha_final')
+            ->first()?->plan;
+
+        // 🕐 Evaluar si es puntual o atrasado
+        $estado = 'puntual'; // Valor por defecto
+        if ($plan && $plan->tieneRestriccionHoraria()) {
+            $horaActual = now();
+            $horaInicio = \Carbon\Carbon::createFromTimeString($plan->hora_inicio);
+            $estado = $horaActual->lte($horaInicio) ? 'puntual' : 'atrasado';
+        }
+
+        // ✅ Registrar asistencia al plan
         Asistencia::create([
             'asistible_id' => $cliente->id,
             'asistible_type' => Clientes::class,
             'tipo_asistencia' => 'plan',
             'fecha' => today(),
             'hora_entrada' => now(),
-            'estado' => 'puntual',
+            'estado' => $estado,
             'origen' => 'manual',
             'usuario_registro_id' => auth()->id(),
         ]);
 
         Notification::make()
             ->title('✅ Asistencia registrada')
-            ->body('Ingreso con plan activo registrado con éxito.')
+            ->body("Ingreso registrado con éxito. Estado: " . ucfirst($estado))
             ->success()
             ->send();
 
@@ -132,7 +184,6 @@ class ListAsistencias extends ListRecords
     {
         $personal = $this->personal;
 
-        // ✅ 1. Verificamos si tiene un permiso aprobado hoy
         $permiso = $personal->tienePermisoHoy();
 
         if ($permiso) {
@@ -151,7 +202,7 @@ class ListAsistencias extends ListRecords
                     'estado' => 'permiso',
                     'origen' => 'manual',
                     'usuario_registro_id' => auth()->id(),
-                    'observacion' => 'Permiso: ' . ($permiso->motivo ?? 'Sin motivo'),
+                    'observacion' => 'Permiso aprobado: ' . ($permiso->motivo ?? 'Sin motivo registrado'),
                 ]);
             }
 
@@ -165,7 +216,6 @@ class ListAsistencias extends ListRecords
             return;
         }
 
-        // ✅ 2. Verificamos si tiene turno hoy
         $turno = $personal->turnoHoy();
 
         if (!$turno) {
@@ -181,7 +231,6 @@ class ListAsistencias extends ListRecords
         $fin = now()->setTimeFrom(Carbon::createFromFormat('H:i:s', $turno->hora_fin));
         $ahora = now();
 
-        // ✅ 3. Verificamos si ya tiene una asistencia en este turno sin salida
         $asistencia = Asistencia::where('asistible_id', $personal->id)
             ->where('asistible_type', Personal::class)
             ->whereBetween('hora_entrada', [$inicio, $fin])
@@ -203,6 +252,7 @@ class ListAsistencias extends ListRecords
                 $this->reset('ci', 'cliente', 'personal', 'mostrarModal');
                 return;
             }
+
             $asistencia->update([
                 'hora_salida' => $ahora,
             ]);
@@ -217,7 +267,6 @@ class ListAsistencias extends ListRecords
             return;
         }
 
-        // ✅ 4. Verificamos si ya registró entrada para este turno (ya tiene entrada y salida)
         $yaIngreso = Asistencia::where('asistible_id', $personal->id)
             ->where('asistible_type', Personal::class)
             ->whereBetween('hora_entrada', [$inicio, $fin])
@@ -234,7 +283,6 @@ class ListAsistencias extends ListRecords
             return;
         }
 
-        // ✅ 5. Validamos si puede ingresar (puntual o atrasado)
         $verificacion = $personal->puedeRegistrarEntrada();
 
         if (!$verificacion['permitido']) {
@@ -248,7 +296,6 @@ class ListAsistencias extends ListRecords
 
         $estado = $verificacion['estado'];
 
-        // ✅ 6. Registrar nueva entrada
         Asistencia::create([
             'asistible_id' => $personal->id,
             'asistible_type' => Personal::class,
@@ -258,6 +305,7 @@ class ListAsistencias extends ListRecords
             'estado' => $estado,
             'origen' => 'manual',
             'usuario_registro_id' => auth()->id(),
+            'observacion' => "Registro manual con estado: {$estado}",
         ]);
 
         Notification::make()
@@ -310,4 +358,5 @@ class ListAsistencias extends ListRecords
             $this->updatedCi($this->ci);
         }
     }
+
 }
