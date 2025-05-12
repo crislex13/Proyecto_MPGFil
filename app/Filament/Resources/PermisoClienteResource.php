@@ -26,9 +26,51 @@ use Filament\Notifications\Notification;
 class PermisoClienteResource extends Resource
 {
     protected static ?string $model = PermisoCliente::class;
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?string $navigationLabel = 'Permisos Clientes';
-    protected static ?string $navigationGroup = 'Administración';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Permisos de Clientes';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Control de Accesos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-calendar';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Permiso de Cliente';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Permisos de Clientes';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

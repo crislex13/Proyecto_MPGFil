@@ -16,7 +16,19 @@ class CreateClientes extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        if (isset($data['foto'])) {
+        // Validar duplicado de CI
+        if (Clientes::where('ci', $data['ci'])->exists()) {
+            Notification::make()
+                ->title('❌ CI duplicado')
+                ->body('Ya existe un cliente con ese número de CI.')
+                ->danger()
+                ->send();
+
+            $this->halt(); // Detiene la ejecución
+        }
+
+        // Formateo de imagen si existe
+        if (!empty($data['foto'])) {
             $data['foto'] = str_replace('public/', '', $data['foto']);
         }
 
@@ -29,36 +41,44 @@ class CreateClientes extends CreateRecord
     {
         $cliente = $this->record;
 
-        $primerNombre = explode(' ', $cliente->nombre)[0];
-        $usuario = $primerNombre . '_' . $cliente->ci;
-
-        $existe = User::where('ci', $cliente->ci)->first();
-        if ($existe) {
-            $cliente->update(['user_id' => $existe->id]);
-            return;
-        }
-
+        $primerNombre = ucfirst(explode(' ', $cliente->nombre)[0]);
+        $username = "{$primerNombre}_{$cliente->ci}";
         $passwordPlano = \Carbon\Carbon::parse($cliente->fecha_de_nacimiento)->format('d-m-Y');
 
-        $user = User::create([
-            'name' => $cliente->nombre . ' ' . $cliente->apellido_paterno,
-            'ci' => $cliente->ci,
+        $user = User::firstOrCreate(
+            ['ci' => $cliente->ci],
+            [
+                'name' => "{$cliente->nombre} {$cliente->apellido_paterno}",
+                'foto' => $cliente->foto,
+                'telefono' => $cliente->telefono,
+                'username' => $username,
+                'password' => bcrypt($passwordPlano),
+                'estado' => 'activo',
+            ]
+        );
+
+        // Actualizar datos si ya existía
+        $user->update([
+            'name' => "{$cliente->nombre} {$cliente->apellido_paterno}",
             'foto' => $cliente->foto,
             'telefono' => $cliente->telefono,
-            'email' => $usuario . '@cliente.bo',
-            'password' => bcrypt($passwordPlano),
-            'estado' => 'activo',
+            'username' => $username,
         ]);
 
-        $user->assignRole('cliente');
+        // Asignar rol si aún no lo tiene
+        if (!$user->hasRole('cliente')) {
+            $user->assignRole('cliente');
+        }
 
         $cliente->update(['user_id' => $user->id]);
 
         Notification::make()
-            ->title('🆕 Usuario creado')
-            ->body("Usuario: **{$usuario}**\nContraseña: **{$passwordPlano}**")
+            ->title('🆕 Usuario asignado')
+            ->body("Usuario: **{$username}**\nContraseña: **{$passwordPlano}**")
             ->success()
             ->send();
+
+        $this->record->refresh();
     }
 
     protected function getRedirectUrl(): string

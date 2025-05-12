@@ -25,9 +25,49 @@ class CasilleroResource extends Resource
 {
     protected static ?string $model = Casillero::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-lock-closed';
+    public static function getNavigationLabel(): string
+    {
+        return 'Casilleros';
+    }
 
-    protected static ?string $navigationGroup = 'Administración';
+    public static function getNavigationGroup(): string
+    {
+        return 'Administración de Clientes';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-lock-closed';
+    }
+    public static function getModelLabel(): string
+    {
+        return 'Casillero';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Casilleros';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

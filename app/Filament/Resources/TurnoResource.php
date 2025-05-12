@@ -23,13 +23,50 @@ class TurnoResource extends Resource
 {
     protected static ?string $model = Turno::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar';
+    public static function getNavigationLabel(): string
+    {
+        return 'Turnos del Personal';
+    }
 
-    protected static ?string $navigationGroup = 'Gestión de Personal';
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Personal';
+    }
 
-    protected static ?string $pluralModelLabel = 'Turnos';
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-clock';
+    }
 
-    protected static ?string $navigationLabel = 'Turnos';
+    public static function getModelLabel(): string
+    {
+        return 'Turno del Personal';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Turnos del Personal';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
 
     public static function form(Form $form): Form
@@ -41,7 +78,7 @@ class TurnoResource extends Resource
                 ->schema([
 
                     Select::make('personal_id')
-                        ->label('Instructor')
+                        ->label('Personal')
                         ->relationship(
                             name: 'personal',
                             titleAttribute: 'nombre_completo',
@@ -174,7 +211,7 @@ class TurnoResource extends Resource
             ->columns([
 
                 TextColumn::make('personal.nombre_completo')
-                    ->label('Instructor')
+                    ->label('Personal')
                     ->searchable(['personals.nombre', 'personals.apellido_paterno', 'personals.apellido_materno']) // <- ✅ tabla real
                     ->icon('heroicon-o-user-circle')
                     ->sortable(),

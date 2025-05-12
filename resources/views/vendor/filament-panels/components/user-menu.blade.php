@@ -23,14 +23,19 @@
     "
 >
     <x-slot name="trigger">
-        <button
-            aria-label="{{ __('filament-panels::layout.actions.open_user_menu.label') }}"
-            type="button"
-            class="shrink-0"
-        >
+    <button
+        aria-label="{{ __('filament-panels::layout.actions.open_user_menu.label') }}"
+        type="button"
+        class="shrink-0 rounded-full overflow-hidden w-10 h-10 border-2 border-orange-500"
+    >
+        @if ($user->foto)
+            <img src="{{ asset('storage/' . $user->foto) }}" alt="Foto de perfil"
+                class="object-cover w-full h-full" />
+        @else
             <x-filament-panels::avatar.user :user="$user" />
-        </button>
-    </x-slot>
+        @endif
+    </button>
+</x-slot>
 
     @if ($profileItem?->isVisible() ?? true)
         {{ \Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::USER_MENU_PROFILE_BEFORE) }}
@@ -84,15 +89,24 @@
             </x-filament::dropdown.list.item>
         @endforeach
 
-        <x-filament::dropdown.list.item
-            :action="$logoutItem?->getUrl() ?? filament()->getLogoutUrl()"
-            :color="$logoutItem?->getColor()"
-            :icon="$logoutItem?->getIcon() ?? \Filament\Support\Facades\FilamentIcon::resolve('panels::user-menu.logout-button') ?? 'heroicon-m-arrow-left-on-rectangle'"
-            method="post"
-            tag="form"
-        >
-            {{ $logoutItem?->getLabel() ?? __('filament-panels::layout.actions.logout.label') }}
-        </x-filament::dropdown.list.item>
+        {{-- Botón Cerrar sesión funcional --}}
+        <form method="POST" action="{{ route('filament.admin.auth.logout') }}" id="logout-form">
+    @csrf
+    <x-filament::dropdown.list.item
+        tag="button"
+        type="submit"
+        color="danger"
+        icon="heroicon-m-arrow-left-on-rectangle"
+        onclick="
+            event.preventDefault();
+            document.getElementById('logout-form').submit();
+            setTimeout(() => window.location.href = '{{ route('filament.admin.auth.login') }}', 500);
+        "
+    >
+        Cerrar sesión
+    </x-filament::dropdown.list.item>
+</form>
+
     </x-filament::dropdown.list>
 </x-filament::dropdown>
 

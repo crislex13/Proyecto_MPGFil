@@ -26,10 +26,50 @@ class IngresoProductoResource extends Resource
 {
     protected static ?string $model = IngresoProducto::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-down-tray';
-    protected static ?string $navigationGroup = 'Productos';
-    protected static ?string $navigationLabel = 'Ingresos De Productos';
-    protected static ?string $pluralModelLabel = 'Ingresos De Productos';
+    public static function getNavigationLabel(): string
+    {
+        return 'Ingresos de Productos';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Productos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-arrow-down-tray';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Ingreso de Producto';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Ingresos de Productos';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

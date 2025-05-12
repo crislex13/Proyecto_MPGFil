@@ -15,50 +15,46 @@ class CreatePersonal extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Generar usuario y contraseña basados en nombre y fecha de nacimiento
-        $primerNombre = strtolower(explode(' ', trim($data['nombre']))[0]); // Primer nombre en minúscula
-        $ci = $data['ci'];
-        $usuario = $primerNombre . '_' . $ci;
+        $primerNombre = ucfirst(explode(' ', trim($data['nombre']))[0]);
+        $username = "{$primerNombre}_{$data['ci']}";
         $passwordPlano = \Carbon\Carbon::parse($data['fecha_de_nacimiento'])->format('d-m-Y');
 
-        // Verificar si ya existe un usuario con ese CI
-        if (!User::where('ci', $ci)->exists()) {
-            // Crear el usuario
-            $usuarioNuevo = User::create([
+        $user = User::firstOrCreate(
+            ['ci' => $data['ci']],
+            [
                 'name' => "{$data['nombre']} {$data['apellido_paterno']} {$data['apellido_materno']}",
-                'email' => $usuario . '@sistema.com',
-                'ci' => $ci,
                 'foto' => $data['foto'] ?? null,
                 'telefono' => $data['telefono'] ?? null,
-                'password' => Hash::make($passwordPlano),
+                'username' => $username,
+                'password' => bcrypt($passwordPlano),
                 'estado' => 'activo',
-            ]);
+            ]
+        );
 
-            // Asignar rol automáticamente según cargo
-            $rol = strtolower($data['cargo']);
-            $rolesPermitidos = ['instructor', 'recepcionista'];
-            if (in_array($rol, $rolesPermitidos) && Role::where('name', $rol)->exists()) {
-                $usuarioNuevo->assignRole($rol);
-            } else {
-                Notification::make()
-                    ->title('⚠️ Rol no permitido')
-                    ->body("El cargo '{$data['cargo']}' no tiene un rol asignable en el sistema.")
-                    ->warning()
-                    ->send();
-            }
+        // Actualizar datos si ya existía
+        $user->update([
+            'name' => "{$data['nombre']} {$data['apellido_paterno']} {$data['apellido_materno']}",
+            'foto' => $data['foto'] ?? null,
+            'telefono' => $data['telefono'] ?? null,
+            'username' => $username,
+        ]);
 
-            // Guardar el ID del usuario como quien lo registró
-            $data['registrado_por'] = auth()->id();
+        $rol = strtolower($data['cargo']);
+        $rolesPermitidos = ['instructor', 'recepcionista'];
 
-            // Notificación visual
-            Notification::make()
-                ->title('🆕 Usuario creado')
-                ->body("Usuario: **{$usuario}**\nContraseña: **{$passwordPlano}**")
-                ->success()
-                ->send();
-            $data['user_id'] = $usuarioNuevo->id;
+        if (in_array($rol, $rolesPermitidos) && !$user->hasRole($rol)) {
+            $user->assignRole($rol);
         }
+
+        $data['user_id'] = $user->id;
         $data['registrado_por'] = auth()->id();
+
+        Notification::make()
+            ->title('🆕 Usuario asignado')
+            ->body("Usuario: **{$username}**\nContraseña: **{$passwordPlano}**")
+            ->success()
+            ->send();
+
         return $data;
     }
 

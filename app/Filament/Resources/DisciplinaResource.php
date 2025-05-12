@@ -18,10 +18,51 @@ use Filament\Tables\Columns\TextColumn;
 class DisciplinaResource extends Resource
 {
     protected static ?string $model = Disciplina::class;
-    protected static ?string $navigationIcon = 'heroicon-o-bolt';
-    protected static ?string $navigationGroup = 'Catálogo de Planes';
-    protected static ?string $navigationLabel = 'Disciplinas';
-    protected static ?string $pluralModelLabel = 'Disciplinas';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Disciplinas';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Catálogo de Planes';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-bolt';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Disciplina';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Disciplinas';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

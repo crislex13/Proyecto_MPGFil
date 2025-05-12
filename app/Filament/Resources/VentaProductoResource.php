@@ -24,11 +24,51 @@ use App\Filament\Resources\VentaProductoResource\RelationManagers\DetallesRelati
 class VentaProductoResource extends Resource
 {
     protected static ?string $model = VentaProducto::class;
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'Productos';
-    protected static ?string $navigationLabel = 'Ventas de Productos';
-    protected static ?string $modelLabel = 'Venta';
-    protected static ?string $pluralModelLabel = 'Ventas';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Ventas de Productos';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Productos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-shopping-cart';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Venta de Producto';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Ventas de Productos';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'recepcionista']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

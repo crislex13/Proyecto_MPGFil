@@ -20,14 +20,50 @@ class SalaResource extends Resource
 {
     protected static ?string $model = Sala::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-library';
+    public static function getNavigationLabel(): string
+    {
+        return 'Salas de Sesiones';
+    }
 
-    protected static ?string $navigationGroup = 'Gestión de Personal';
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Personal';
+    }
 
-    protected static ?string $pluralModelLabel = 'Salas de Trabajo';
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-building-office';
+    }
 
-    protected static ?string $navigationLabel = 'Salas de Trabajo';
+    public static function getModelLabel(): string
+    {
+        return 'Sala de Sesión';
+    }
 
+    public static function getPluralModelLabel(): string
+    {
+        return 'Salas de Sesión';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

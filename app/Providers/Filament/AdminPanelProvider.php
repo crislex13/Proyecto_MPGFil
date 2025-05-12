@@ -18,6 +18,9 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use App\Actions\Auth\CustomLogoutResponse;
+use Filament\Navigation\NavigationItem;
+use Filament\Navigation\NavigationGroup;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -29,12 +32,12 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook('panels::body.start', fn() => '<style>.fi-main { padding-left: 1rem; padding-right: 1rem; }</style>')
             ->id('admin')
             ->path('admin')
-            ->login()
-            //->navigation(fn() => !in_array(auth()->user()?->getRoleNames()->first(), ['cliente', 'instructor']))->login()
-            //->navigation(fn () => auth()->check() && !in_array(auth()->user()->getRoleNames()->first(), ['cliente', 'instructor']))
+            ->login(\App\Http\Livewire\Auth\LoginCustom::class)
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->brandName('MAXPOWERGYM')
+            ->brandLogo(fn() => asset('storage/LogosMPG/Recurso 3.png'))
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             //->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
@@ -68,6 +71,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\ValidarAccesoPorConfiguracion::class,
             ])
             ->plugins([
                 FilamentShieldPlugin::make(),

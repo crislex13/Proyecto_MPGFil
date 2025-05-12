@@ -37,16 +37,50 @@ class PlanClienteResource extends Resource
 {
     protected static ?string $model = PlanCliente::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    public static function getNavigationLabel(): string
+    {
+        return 'Planes de Cliente';
+    }
 
-    protected static ?string $navigationLabel = 'Planes por Cliente';
+    public static function getNavigationGroup(): string
+    {
+        return 'Administración de Clientes';
+    }
 
-    protected static ?string $navigationGroup = 'Administración';
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-document-text';
+    }
 
+    public static function getModelLabel(): string
+    {
+        return 'Plan de Cliente';
+    }
 
-    protected static ?string $modelLabel = 'Planes por Cliente';
+    public static function getPluralModelLabel(): string
+    {
+        return 'Planes de Clientes';
+    }
 
-    protected static ?string $pluralModelLabel = 'Planes por Cliente';
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

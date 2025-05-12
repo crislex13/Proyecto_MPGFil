@@ -29,6 +29,7 @@ class Personal extends Model
         'observaciones',
         'registrado_por',
         'modificado_por',
+        'user_id',
     ];
 
     protected $casts = [

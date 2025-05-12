@@ -26,15 +26,51 @@ use Filament\Tables;
 class SesionAdicionalResource extends Resource
 {
     protected static ?string $model = SesionAdicional::class;
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
 
-    protected static ?string $modelLabel = 'Sesión por Cliente';
+    public static function getNavigationLabel(): string
+    {
+        return 'Sesiones de Cliente';
+    }
 
-    protected static ?string $pluralModelLabel = 'Sesiones por Clientes';
+    public static function getNavigationGroup(): string
+    {
+        return 'Administración de Clientes';
+    }
 
-    protected static ?string $navigationLabel = 'Sesiones por Clientes';
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-calendar-days';
+    }
 
-    protected static ?string $navigationGroup = 'Administración';
+    public static function getModelLabel(): string
+    {
+        return 'Sesión de Cliente';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Sesiones de Clientes';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

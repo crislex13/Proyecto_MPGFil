@@ -27,14 +27,57 @@ use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Facades\Filament;
+use App\Models\User;
 
 
 class ClientesResource extends Resource
 {
     protected static ?string $model = Clientes::class;
-    protected static ?string $navigationIcon = 'heroicon-o-user';
-    protected static ?string $navigationLabel = 'Clientes';
-    protected static ?string $navigationGroup = 'Administración';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Clientes';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Administración de Clientes';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-user';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Cliente';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Clientes';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {
@@ -63,6 +106,7 @@ class ClientesResource extends Resource
 
                     TextInput::make('ci')
                         ->label('C.I.')
+                        ->unique(ignoreRecord: true, table: 'clientes', column: 'ci')
                         ->required()
                         ->placeholder('Carnet de identidad')
                         ->live(onBlur: true)
@@ -113,6 +157,8 @@ class ClientesResource extends Resource
                         ->disk('public')
                         ->directory('fotos/clientes')
                         ->previewable()
+                        ->imageEditor()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg']) // <- Agrega esto
                         ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName())),
 
                     TextInput::make('biometrico_id')
@@ -344,6 +390,23 @@ class ClientesResource extends Resource
                                 ->content($record->contacto_emergencia_celular ?? '-'),
 
                         ]),
+
+                        Section::make('Credenciales del sistema')
+                            ->columns(2)
+                            ->schema([
+                                Placeholder::make('username')
+                                    ->label('Usuario')
+                                    ->content(fn($record) => optional(User::find($record->user_id))->username ?? 'No generado'),
+
+                                Placeholder::make('password_inicial')
+                                    ->label('Contraseña inicial')
+                                    ->content(
+                                        fn($record) =>
+                                        optional($record->fecha_de_nacimiento)
+                                        ? \Carbon\Carbon::parse($record->fecha_de_nacimiento)->format('d-m-Y')
+                                        : 'No disponible'
+                                    ),
+                            ]),
                     ]),
                 Action::make('descargarFicha')
                     ->label('Ficha Cliente')
@@ -358,7 +421,7 @@ class ClientesResource extends Resource
                     ->color('success')
                     ->url(fn($record) => route('clientes.reporte.mensual', $record->id))
                     ->openUrlInNewTab()
-                    //->visible(fn() => auth()->user()->can('ver_ficha_cliente')),
+                //->visible(fn() => auth()->user()->can('ver_ficha_cliente')),
             ]);
     }
 

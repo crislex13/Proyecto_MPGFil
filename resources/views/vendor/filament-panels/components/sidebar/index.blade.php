@@ -5,9 +5,11 @@
 @php
     $openSidebarClasses = 'fi-sidebar-open w-[--sidebar-width] translate-x-0 shadow-xl ring-1 ring-gray-950/5 dark:ring-white/10 rtl:-translate-x-0';
     $isRtl = __('filament-panels::layout.direction') === 'rtl';
+    $user = auth()->user();
 @endphp
 
 {{-- format-ignore-start --}}
+{{-- Ocultar completamente el sidebar solo si es cliente o instructor sin roles administrativos --}}
 <aside
     x-data="{}"
     @if (filament()->isSidebarCollapsibleOnDesktop() && (! filament()->hasTopNavigation()))

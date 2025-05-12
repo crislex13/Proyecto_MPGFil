@@ -12,27 +12,47 @@
          <?php $__env->slot('subheading', null, []); ?> 
             <?php echo e(__('filament-panels::pages/auth/login.actions.register.before')); ?>
 
-
             <?php echo e($this->registerAction); ?>
 
          <?php $__env->endSlot(); ?>
     <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
-    <?php echo e(\Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE, scopes: $this->getRenderHookScopes())); ?>
+    <?php echo e(\Filament\Support\Facades\FilamentView::renderHook(
+    \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE,
+    scopes: $this->getRenderHookScopes()
+)); ?>
 
 
     <?php if (isset($component)) { $__componentOriginald09a0ea6d62fc9155b01d885c3fdffb3 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginald09a0ea6d62fc9155b01d885c3fdffb3 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'filament-panels::components.form.index','data' => ['id' => 'form','wire:submit' => 'authenticate']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'filament-panels::components.form.index','data' => ['wire:submit.prevent' => 'authenticate']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('filament-panels::form'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['id' => 'form','wire:submit' => 'authenticate']); ?>
-        <?php echo e($this->form); ?>
+<?php $component->withAttributes(['wire:submit.prevent' => 'authenticate']); ?>
+        <?php echo csrf_field(); ?>
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Nombre de usuario
+                </label>
+                <input wire:model.defer="data.username" type="text" name="username" id="username"
+                    autocomplete="username" required autofocus placeholder="Ej: admin_258877"
+                    class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+            </div>
 
+            <div class="space-y-1">
+                <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Contraseña
+                </label>
+                <input wire:model.defer="data.password" type="password" name="password" id="password"
+                    autocomplete="current-password" required placeholder="••••••••"
+                    class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+            </div>
+        </div>
 
         <?php if (isset($component)) { $__componentOriginal742ef35d02cb00943edd9ad8ebf61966 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal742ef35d02cb00943edd9ad8ebf61966 = $attributes; } ?>
@@ -65,7 +85,10 @@
 <?php unset($__componentOriginald09a0ea6d62fc9155b01d885c3fdffb3); ?>
 <?php endif; ?>
 
-    <?php echo e(\Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, scopes: $this->getRenderHookScopes())); ?>
+    <?php echo e(\Filament\Support\Facades\FilamentView::renderHook(
+    \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
+    scopes: $this->getRenderHookScopes()
+)); ?>
 
  <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
@@ -76,5 +99,4 @@
 <?php if (isset($__componentOriginalf45da69382bf4ac45a50b496dc82aa9a)): ?>
 <?php $component = $__componentOriginalf45da69382bf4ac45a50b496dc82aa9a; ?>
 <?php unset($__componentOriginalf45da69382bf4ac45a50b496dc82aa9a); ?>
-<?php endif; ?>
-<?php /**PATH C:\xampp\htdocs\Laravel\Proyecto_MPGFil\resources\views/vendor/filament-panels/pages/auth/login.blade.php ENDPATH**/ ?>
+<?php endif; ?><?php /**PATH C:\xampp\htdocs\Laravel\Proyecto_MPGFil\resources\views/vendor/filament-panels/pages/auth/login.blade.php ENDPATH**/ ?>

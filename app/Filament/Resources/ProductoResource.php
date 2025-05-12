@@ -25,10 +25,50 @@ class ProductoResource extends Resource
 {
     protected static ?string $model = Productos::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cube';
-    protected static ?string $navigationGroup = 'Productos';
-    protected static ?string $navigationLabel = 'Productos';
-    protected static ?string $pluralModelLabel = 'Productos';
+    public static function getNavigationLabel(): string
+    {
+        return 'Productos';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Productos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-cube';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Producto';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Productos';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'recepcionista']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {
@@ -206,7 +246,7 @@ class ProductoResource extends Resource
                     ->color('success')
                     ->url(route('reporte.productos.diario'))
                     ->openUrlInNewTab(),
-                    //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
+                //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
 
                 Action::make('Reporte Mensual')
                     ->label('Reporte Mensual')
@@ -214,7 +254,7 @@ class ProductoResource extends Resource
                     ->color('warning')
                     ->url(route('reporte.productos.mensual'))
                     ->openUrlInNewTab(),
-                    //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
+                //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
 
                 Action::make('Reporte Anual')
                     ->label('Reporte Anual')
@@ -222,7 +262,7 @@ class ProductoResource extends Resource
                     ->color('primary')
                     ->url(route('reporte.productos.anual'))
                     ->openUrlInNewTab(),
-                    //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
+                //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('categoria_id')

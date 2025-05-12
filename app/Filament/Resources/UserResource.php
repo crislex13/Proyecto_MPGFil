@@ -26,38 +26,73 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $label = 'Usuario';
-    protected static ?string $pluralLabel = 'Usuarios';
-    protected static ?string $navigationLabel = 'Usuarios';
-    protected static ?string $navigationIcon = 'heroicon-o-user';
-    protected static ?string $navigationGroup = 'Administración';
-    protected static ?int $navigationSort = 1;
+    public static function getNavigationLabel(): string
+    {
+        return 'Usuarios';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Administración del Sistema';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-identification';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Usuario';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Usuarios';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Section::make('Información Personal')
+            Section::make('Datos personales')
                 ->icon('heroicon-o-user-circle')
                 ->columns(2)
                 ->schema([
                     TextInput::make('name')
                         ->label('Nombre completo')
-                        ->placeholder('Ej: María Pérez')
                         ->required(),
 
                     TextInput::make('ci')
                         ->label('C.I.')
-                        ->placeholder('Número de carnet de identidad')
-                        ->unique(ignoreRecord: true)
-                        ->required(),
+                        ->required()
+                        ->unique(ignoreRecord: true),
 
                     TextInput::make('telefono')
                         ->label('Teléfono (WhatsApp)')
                         ->tel()
-                        ->placeholder('+59171234567')
                         ->prefix('+591')
-                        ->helperText('Incluye el código de país.')
-                        ->maxLength(13),
+                        ->required()
+                        ->placeholder('71234567'),
 
                     FileUpload::make('foto')
                         ->label('Foto de perfil')
@@ -70,24 +105,22 @@ class UserResource extends Resource
                         ),
                 ]),
 
-            Section::make('Acceso al sistema')
+            Section::make('Credenciales y acceso')
                 ->icon('heroicon-o-lock-closed')
                 ->columns(2)
+                //->visible(fn() => auth()->user()?->hasRole('admin')) // Solo admins ven esta sección
                 ->schema([
-                    TextInput::make('email')
-                        ->label('Correo electrónico')
-                        ->placeholder('usuario@sistema.com')
-                        ->email()
+                    TextInput::make('username')
+                        ->label('Nombre de usuario')
                         ->required()
                         ->unique(ignoreRecord: true),
 
                     TextInput::make('password')
                         ->label('Contraseña')
-                        ->placeholder('Contraseña segura')
                         ->password()
-                        ->required(fn($context) => $context === 'create')
-                        ->dehydrateStateUsing(fn($state) => bcrypt($state))
-                        ->visibleOn('create'),
+                        ->dehydrateStateUsing(fn($state) => filled($state) ? bcrypt($state) : null)
+                        ->dehydrated(fn($state) => filled($state))
+                        ->hint('Dejar vacío si no deseas cambiarla'),
 
                     Select::make('estado')
                         ->label('Estado')
@@ -132,12 +165,9 @@ class UserResource extends Resource
                     ->searchable(),
 
                 TextColumn::make('telefono')
-                    ->label('Teléfono')
-                    ->icon('heroicon-o-device-phone-mobile'),
-
-                TextColumn::make('email')
-                    ->label('Correo')
-                    ->icon('heroicon-o-envelope'),
+                    ->label('WhatsApp')
+                    ->icon('heroicon-o-device-phone-mobile')
+                    ->searchable(),
 
                 BadgeColumn::make('estado')
                     ->label('Estado')
@@ -160,16 +190,15 @@ class UserResource extends Resource
                 TextColumn::make('last_login_at')
                     ->label('Último acceso')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->searchable(),
+                    ->sortable(),
             ])
             ->filters([
                 Filter::make('Conectados hoy')
-                    ->query(fn ($query) => $query->whereDate('last_login_at', now()->toDateString())),
+                    ->query(fn($query) => $query->whereDate('last_login_at', now()->toDateString())),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
                 ViewAction::make()
                     ->label('Ver')
                     ->icon('heroicon-o-eye')
@@ -203,10 +232,6 @@ class UserResource extends Resource
                                     Placeholder::make('telefono')
                                         ->label('Teléfono')
                                         ->content($record->telefono ?? 'No registrado'),
-
-                                    Placeholder::make('email')
-                                        ->label('Correo electrónico')
-                                        ->content($record->email),
                                 ]),
 
                             Section::make('Acceso y estado')

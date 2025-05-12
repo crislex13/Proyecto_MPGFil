@@ -32,11 +32,15 @@
             ->class(['fi-user-menu'])
     )]); ?>
      <?php $__env->slot('trigger', null, []); ?> 
-        <button
-            aria-label="<?php echo e(__('filament-panels::layout.actions.open_user_menu.label')); ?>"
-            type="button"
-            class="shrink-0"
-        >
+    <button
+        aria-label="<?php echo e(__('filament-panels::layout.actions.open_user_menu.label')); ?>"
+        type="button"
+        class="shrink-0 rounded-full overflow-hidden w-10 h-10 border-2 border-orange-500"
+    >
+        <?php if($user->foto): ?>
+            <img src="<?php echo e(asset('storage/' . $user->foto)); ?>" alt="Foto de perfil"
+                class="object-cover w-full h-full" />
+        <?php else: ?>
             <?php if (isset($component)) { $__componentOriginalceea4679a368984135244eacf4aafeca = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginalceea4679a368984135244eacf4aafeca = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'filament-panels::components.avatar.user','data' => ['user' => $user]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -57,8 +61,9 @@
 <?php $component = $__componentOriginalceea4679a368984135244eacf4aafeca; ?>
 <?php unset($__componentOriginalceea4679a368984135244eacf4aafeca); ?>
 <?php endif; ?>
-        </button>
-     <?php $__env->endSlot(); ?>
+        <?php endif; ?>
+    </button>
+ <?php $__env->endSlot(); ?>
 
     <?php if($profileItem?->isVisible() ?? true): ?>
         <?php echo e(\Filament\Support\Facades\FilamentView::renderHook(\Filament\View\PanelsRenderHook::USER_MENU_PROFILE_BEFORE)); ?>
@@ -218,19 +223,29 @@
 <?php endif; ?>
         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
-        <?php if (isset($component)) { $__componentOriginal1bd4d8e254cc40cdb05bd99df3e63f78 = $component; } ?>
+        
+        <form method="POST" action="<?php echo e(route('filament.admin.auth.logout')); ?>" id="logout-form">
+    <?php echo csrf_field(); ?>
+    <?php if (isset($component)) { $__componentOriginal1bd4d8e254cc40cdb05bd99df3e63f78 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal1bd4d8e254cc40cdb05bd99df3e63f78 = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'filament::components.dropdown.list.item','data' => ['action' => $logoutItem?->getUrl() ?? filament()->getLogoutUrl(),'color' => $logoutItem?->getColor(),'icon' => $logoutItem?->getIcon() ?? \Filament\Support\Facades\FilamentIcon::resolve('panels::user-menu.logout-button') ?? 'heroicon-m-arrow-left-on-rectangle','method' => 'post','tag' => 'form']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'filament::components.dropdown.list.item','data' => ['tag' => 'button','type' => 'submit','color' => 'danger','icon' => 'heroicon-m-arrow-left-on-rectangle','onclick' => '
+            event.preventDefault();
+            document.getElementById(\'logout-form\').submit();
+            setTimeout(() => window.location.href = \''.e(route('filament.admin.auth.login')).'\', 500);
+        ']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('filament::dropdown.list.item'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['action' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($logoutItem?->getUrl() ?? filament()->getLogoutUrl()),'color' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($logoutItem?->getColor()),'icon' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($logoutItem?->getIcon() ?? \Filament\Support\Facades\FilamentIcon::resolve('panels::user-menu.logout-button') ?? 'heroicon-m-arrow-left-on-rectangle'),'method' => 'post','tag' => 'form']); ?>
-            <?php echo e($logoutItem?->getLabel() ?? __('filament-panels::layout.actions.logout.label')); ?>
-
-         <?php echo $__env->renderComponent(); ?>
+<?php $component->withAttributes(['tag' => 'button','type' => 'submit','color' => 'danger','icon' => 'heroicon-m-arrow-left-on-rectangle','onclick' => '
+            event.preventDefault();
+            document.getElementById(\'logout-form\').submit();
+            setTimeout(() => window.location.href = \''.e(route('filament.admin.auth.login')).'\', 500);
+        ']); ?>
+        Cerrar sesión
+     <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal1bd4d8e254cc40cdb05bd99df3e63f78)): ?>
 <?php $attributes = $__attributesOriginal1bd4d8e254cc40cdb05bd99df3e63f78; ?>
@@ -240,6 +255,8 @@
 <?php $component = $__componentOriginal1bd4d8e254cc40cdb05bd99df3e63f78; ?>
 <?php unset($__componentOriginal1bd4d8e254cc40cdb05bd99df3e63f78); ?>
 <?php endif; ?>
+</form>
+
      <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal66687bf0670b9e16f61e667468dc8983)): ?>

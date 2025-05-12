@@ -37,3 +37,11 @@ Route::get('/reporte-productos/anual', [ReporteProductosAnualController::class, 
 Route::get('/reportes/financiero', [ReporteGeneralController::class, 'reporteFinanciero'])
     ->middleware(['auth'])
     ->name('reportes.financiero');
+
+    Route::post('/admin/logout', function () {
+    auth()->logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect('/admin/login');
+})->name('filament.admin.auth.logout');

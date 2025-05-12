@@ -21,10 +21,50 @@ class PermisoPersonalResource extends Resource
 {
     protected static ?string $model = PermisoPersonal::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?string $navigationGroup = 'Control de Accesos';
-    protected static ?string $modelLabel = 'Permiso Personal';
-    protected static ?string $pluralModelLabel = 'Permisos del Personal';
+    public static function getNavigationLabel(): string
+    {
+        return 'Permisos del Personal';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Control de Accesos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-calendar-days';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Permiso del Personal';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Permisos del Personal';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Forms\Form $form): Forms\Form
     {

@@ -20,10 +20,51 @@ use Filament\Forms\Components\CheckboxList;
 class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
-    protected static ?string $pluralModelLabel = 'Planes';
-    protected static ?string $navigationLabel = 'Planes';
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-    protected static ?string $navigationGroup = 'Catálogo de Planes';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Planes';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Catálogo de Planes';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-clipboard-document-list';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Plan';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Planes';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

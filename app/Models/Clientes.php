@@ -30,6 +30,7 @@ class Clientes extends Model
         'contacto_emergencia_nombre',
         'contacto_emergencia_parentesco',
         'contacto_emergencia_celular',
+        'user_id',
     ];
 
     public function registradoPor(): BelongsTo
@@ -223,7 +224,7 @@ class Clientes extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function asistencias()

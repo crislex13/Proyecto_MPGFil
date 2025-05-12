@@ -28,13 +28,50 @@ class PagoPersonalResource extends Resource
 {
     protected static ?string $model = PagoPersonal::class;
 
-    protected static ?string $pluralModelLabel = 'Pagos del personal';
+    public static function getNavigationLabel(): string
+    {
+        return 'Pagos del Personal';
+    }
 
-    protected static ?string $navigationLabel = 'Pagos del personal';
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Personal';
+    }
 
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-currency-dollar';
+    }
 
-    protected static ?string $navigationGroup = 'Gestión de Personal';
+    public static function getModelLabel(): string
+    {
+        return 'Pago de Personal';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Pago de personal';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'recepcionista']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

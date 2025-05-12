@@ -29,10 +29,49 @@ class AsistenciaResource extends Resource
 {
     protected static ?string $model = Asistencia::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-check-circle';
-    protected static ?string $navigationGroup = 'Control de Accesos';
-    protected static ?string $modelLabel = 'Asistencia';
-    protected static ?string $pluralModelLabel = 'Asistencias';
+    public static function getNavigationLabel(): string
+    {
+        return 'Asistencias';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Control de Accesos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-check-circle';
+    }
+    public static function getModelLabel(): string
+    {
+        return 'Asistencia';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Asistencias';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'recepcionista']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

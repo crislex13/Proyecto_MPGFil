@@ -27,11 +27,51 @@ use Filament\Tables\Actions\Action;
 class PersonalResource extends Resource
 {
     protected static ?string $model = Personal::class;
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationLabel = 'Personal';
-    protected static ?string $navigationGroup = 'Gestión de Personal';
-    protected static ?string $modelLabel = 'Personal';
-    protected static ?string $pluralModelLabel = 'Personal';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Personal';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Personal';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-users';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Personal';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Personal';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {
@@ -108,6 +148,7 @@ class PersonalResource extends Resource
                         ->image()
                         ->directory('fotos/personal')
                         ->disk('public')
+                        ->imageEditor()
                         ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName()))
                         ->previewable(),
 
@@ -404,6 +445,23 @@ class PersonalResource extends Resource
                                 ->placeholder('Información adicional del personal')
 
                         ]),
+
+                        Section::make('Credenciales del sistema')
+                            ->columns(2)
+                            ->schema([
+                                Placeholder::make('username')
+                                    ->label('Usuario')
+                                    ->content(fn($record) => optional($record->user)->username ?? 'No generado'),
+
+                                Placeholder::make('password_inicial')
+                                    ->label('Contraseña inicial')
+                                    ->content(
+                                        fn($record) =>
+                                        optional($record->fecha_de_nacimiento)
+                                        ? \Carbon\Carbon::parse($record->fecha_de_nacimiento)->format('d-m-Y')
+                                        : 'No disponible'
+                                    ),
+                            ]),
                     ]),
                 Action::make('Descargar PDF')
                     ->label('Descargar PDF')
@@ -418,7 +476,7 @@ class PersonalResource extends Resource
                     ->color('success')
                     ->url(fn($record) => route('personal.reporte.mensual', ['id' => $record->id]))
                     ->openUrlInNewTab()
-                    //->visible(fn() => auth()->user()->can('ver_ficha_personal')),
+                //->visible(fn() => auth()->user()->can('ver_ficha_personal')),
 
             ]);
     }

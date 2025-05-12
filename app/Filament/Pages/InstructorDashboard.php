@@ -11,7 +11,7 @@ class InstructorDashboard extends Page
     public $instructor;
 
     protected static ?string $title = 'Panel del Instructor';
-    protected static ?string $navigationLabel = 'Mi Turno';
+    protected static ?string $navigationLabel = 'Informacion de Instructor';
     protected static ?string $slug = 'instructor-dashboard';
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
     protected static string $view = 'filament.pages.instructor-dashboard';

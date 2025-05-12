@@ -12,7 +12,7 @@ class ClienteDashboard extends Page
     protected static string $view = 'filament.pages.cliente-dashboard';
 
     protected static ?string $title = 'Mi Panel';
-    protected static ?string $navigationLabel = 'Mi Información';
+    protected static ?string $navigationLabel = 'Información de Cliente';
     protected static ?string $slug = 'cliente-dashboard';
 
     protected function getHeaderActions(): array

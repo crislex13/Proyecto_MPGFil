@@ -19,11 +19,50 @@ class PlanDisciplinaResource extends Resource
 {
     protected static ?string $model = PlanDisciplina::class;
 
-    protected static ?string $modelLabel = 'Precio de Plan';
-    protected static ?string $pluralModelLabel = 'Precios de Plan';
-    protected static ?string $navigationLabel = 'Precios de Plan';
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
-    protected static ?string $navigationGroup = 'Catálogo de Planes';
+    public static function getNavigationLabel(): string
+    {
+        return 'Precios de Planes';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Catálogo de Planes';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-chart-bar';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Precio de Plan';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Precios de Planes';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canEdit($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

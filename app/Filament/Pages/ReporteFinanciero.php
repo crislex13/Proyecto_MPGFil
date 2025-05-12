@@ -7,25 +7,30 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
-use Illuminate\Support\Facades\Route;
-use Filament\Forms\Form;
 use Filament\Support\Enums\ActionSize;
+use Filament\Forms\Form;
 
 class ReporteFinanciero extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon  = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Reportes';
-    protected static string $view = 'filament.pages.reporte-financiero';
+    protected static string  $view            = 'filament.pages.reporte-financiero';
 
-    public ?string $tipo = 'diario';
+    public ?string $tipo  = 'diario';
     public ?string $fecha = null;
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        // Solo show en sidebar si es admin
+        return auth()->user()?->hasRole('admin');
+    }
 
     public function mount(): void
     {
         $this->form->fill([
-            'tipo' => $this->tipo,
+            'tipo'  => $this->tipo,
             'fecha' => now()->toDateString(),
         ]);
     }
@@ -36,9 +41,9 @@ class ReporteFinanciero extends Page implements HasForms
             Select::make('tipo')
                 ->label('Tipo de reporte')
                 ->options([
-                    'diario' => 'Diario',
+                    'diario'  => 'Diario',
                     'mensual' => 'Mensual',
-                    'anual' => 'Anual',
+                    'anual'   => 'Anual',
                 ])
                 ->required(),
 
@@ -57,10 +62,13 @@ class ReporteFinanciero extends Page implements HasForms
 
     public function generarPDF()
     {
-        $data = $this->form->getState();
-        $tipo = $data['tipo'];
+        $data  = $this->form->getState();
+        $tipo  = $data['tipo'];
         $fecha = $data['fecha'];
 
-        return redirect()->route('reportes.financiero', ['tipo' => $tipo, 'fecha' => $fecha]);
+        return redirect()->route('reportes.financiero', [
+            'tipo'  => $tipo,
+            'fecha' => $fecha,
+        ]);
     }
 }

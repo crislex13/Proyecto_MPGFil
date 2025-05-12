@@ -19,10 +19,50 @@ class CategoriaProductoResource extends Resource
 {
     protected static ?string $model = CategoriaProducto::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
-    protected static ?string $navigationGroup = 'Productos';
-    protected static ?string $navigationLabel = 'Categorías de Productos';
-    protected static ?string $pluralModelLabel = 'Categorías de Productos';
+    public static function getNavigationLabel(): string
+    {
+        return 'Categorías de Productos';
+    }
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Gestión de Productos';
+    }
+
+    public static function getNavigationIcon(): string
+    {
+        return 'heroicon-o-tag';
+    }
+
+    public static function getModelLabel(): string
+    {
+        return 'Categoría de Producto';
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return 'Categorías de Productos';
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return self::shouldRegisterNavigation();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return auth()->user()?->hasRole('admin');
+    }
 
     public static function form(Form $form): Form
     {

@@ -7,6 +7,12 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\PermisoCliente;
 use App\Observers\PermisoClienteObserver;
 use Carbon\Carbon;
+use Filament\Http\Responses\Auth\Contracts\LoginResponse;
+use App\Actions\Auth\CustomLoginResponse;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Route;
+use Filament\Http\Responses\Auth\Contracts\LogoutResponse;
+use App\Actions\Auth\CustomLogoutResponse;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
     }
 
     /**
@@ -39,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
 
         setlocale(LC_TIME, 'es_ES.UTF-8');
         Carbon::setLocale('es');
+
 
     }
 
