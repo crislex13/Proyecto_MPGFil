@@ -7,10 +7,15 @@ use Filament\Widgets\LineChartWidget;
 use Illuminate\Support\Carbon;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Widgets\ChartWidget;
+use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 class InscripcionesPorDia extends LineChartWidget
 {
-    protected static ?string $heading = '📈 Inscripciones - Últimos 30 días';
+    public static function canView(): bool
+    {
+        return auth()->check() && auth()->user()->hasRole('admin');
+    }
+    protected static ?string $heading = 'Inscripciones - Últimos 30 días';
 
     protected function getData(): array
     {
@@ -25,8 +30,8 @@ class InscripcionesPorDia extends LineChartWidget
                 [
                     'label' => 'Inscripciones',
                     'data' => $data->pluck('total'),
-                    'borderColor' => '#f59e0b', // Optional: amarillo ámbar
-                    'backgroundColor' => 'rgba(245, 158, 11, 0.2)', // Optional
+                    'borderColor' => '#f59e0b',
+                    'backgroundColor' => 'rgba(245, 158, 11, 0.2)',
                 ],
             ],
             'labels' => $data->pluck('dia')->map(fn($d) => Carbon::parse($d)->format('d M')),
@@ -38,17 +43,28 @@ class InscripcionesPorDia extends LineChartWidget
         return 1;
     }
 
-    public function getColumnSpan(): int|string|array
+    protected function getType(): string
+    {
+        return 'line';
+    }
+
+    public function getColumnSpan(): int|string
+    {
+        return 3;
+    }
+
+    protected function getChartOptions(): array
     {
         return [
-            'default' => 3,
-            'lg' => 2,
-            'xl' => 1,
+            'maintainAspectRatio' => false,
+            'responsive' => true,
         ];
     }
 
-    protected function getType(): string
+    public function getExtraAttributes(): array
     {
-        return 'line'; // También podés usar 'bar', 'pie', etc.
+        return [
+            'class' => 'h-[180px] max-h-[180px] overflow-hidden',
+        ];
     }
 }

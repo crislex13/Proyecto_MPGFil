@@ -47,24 +47,38 @@ class SalaResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+        return auth()->user()?->can('view_any_sala');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_sala');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_sala');
     }
 
     public static function canCreate(): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('create_sala');
     }
 
     public static function canEdit($record): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('update_sala');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_sala');
     }
 
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_sala');
+    }
     public static function form(Form $form): Form
     {
         return $form->schema([

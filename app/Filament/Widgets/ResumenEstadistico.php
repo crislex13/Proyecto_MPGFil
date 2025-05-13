@@ -6,6 +6,7 @@ use App\Models\PlanCliente;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Card;
 use App\Models\SesionAdicional;
+use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 
 class ResumenEstadistico extends BaseWidget
@@ -45,19 +46,16 @@ class ResumenEstadistico extends BaseWidget
                 ->descriptionIcon('heroicon-o-clock')
                 ->color('primary'),
 
-                Card::make('📦 Sesiones este mes', $mesActual)
+                Card::make('Sesiones este mes', $mesActual)
                 ->description('Contratadas en ' . now()->format('F'))
                 ->color('info')
                 ->icon('heroicon-o-calendar-days'),
 
-            Card::make('📆 Sesiones este año', $añoActual)
+            Card::make('Sesiones este año', $añoActual)
                 ->description('Total en ' . now()->format('Y'))
                 ->color('success')
                 ->icon('heroicon-o-chart-bar'),
         ];
     }
-    protected function getColumns(): int
-    {
-        return 3;
-    }
+
 }

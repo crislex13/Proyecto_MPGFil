@@ -46,15 +46,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\ClienteDashboard::class,
             ])
             ->widgets(
-                in_array(auth()->user()?->getRoleNames()->first(), ['cliente', 'instructor'])
-                ? []
-                : [
-                    \App\Filament\Widgets\ResumenEstadistico::class,
-                    \App\Filament\Widgets\FlujoCajaDiaWidget::class,
-                    \App\Filament\Widgets\InstructorTopWidget::class,
-                    \App\Filament\Widgets\ProductoTopWidget::class,
-                    \App\Filament\Widgets\FlujoCajaSemana::class,
-                ]
+                []
             )
             ->middleware([
                 EncryptCookies::class,

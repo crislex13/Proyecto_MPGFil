@@ -54,22 +54,37 @@ class SesionAdicionalResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+        return auth()->user()?->can('view_any_sesion::adicional');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_sesion::adicional');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_sesion::adicional');
     }
 
     public static function canCreate(): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('create_sesion::adicional');
     }
 
     public static function canEdit($record): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('update_sesion::adicional');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_sesion::adicional');
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_sesion::adicional');
     }
 
     public static function form(Form $form): Form

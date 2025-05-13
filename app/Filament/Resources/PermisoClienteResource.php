@@ -54,23 +54,39 @@ class PermisoClienteResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'recepcionista', 'supervisor']);
+        return auth()->user()?->can('view_any_permiso::cliente');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_permiso::cliente');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_permiso::cliente');
     }
 
     public static function canCreate(): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('create_permiso::cliente');
     }
 
     public static function canEdit($record): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('update_permiso::cliente');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_permiso::cliente');
     }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_permiso::cliente');
+    }
+
 
     public static function form(Form $form): Form
     {

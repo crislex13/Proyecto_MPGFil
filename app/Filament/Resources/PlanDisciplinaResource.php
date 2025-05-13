@@ -46,22 +46,37 @@ class PlanDisciplinaResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('view_any_plan::disciplina');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_plan::disciplina');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_plan::disciplina');
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('create_plan::disciplina');
     }
 
     public static function canEdit($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('update_plan::disciplina');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_plan::disciplina');
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_plan::disciplina');
     }
 
     public static function form(Form $form): Form

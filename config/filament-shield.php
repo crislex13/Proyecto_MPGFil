@@ -62,6 +62,7 @@ return [
         'option' => 'policies_and_permissions',
         'policy_directory' => 'Policies',
         'policy_namespace' => 'Policies',
+        'resource_permission_grouping' => false,
     ],
 
     'exclude' => [
@@ -79,7 +80,7 @@ return [
     ],
 
     'discovery' => [
-        'discover_all_resources' => false,
+        'discover_all_resources' => true,
         'discover_all_widgets' => false,
         'discover_all_pages' => false,
     ],

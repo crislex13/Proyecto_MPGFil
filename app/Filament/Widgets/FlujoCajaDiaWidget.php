@@ -14,6 +14,11 @@ use Filament\Widgets\StatsOverviewWidget\Card;
 
 class FlujoCajaDiaWidget extends StatsOverviewWidget
 {
+    public static function canView(): bool
+    {
+        return auth()->check() && auth()->user()->hasRole('admin');
+    }
+
     protected static ?int $sort = 4;
 
     protected function getCards(): array
@@ -39,25 +44,21 @@ class FlujoCajaDiaWidget extends StatsOverviewWidget
         $totalEgresos = $egresosProductos + $egresosPagos;
 
         return [
-            Card::make('💰 Ingresos del día', number_format($totalIngresos, 2) . ' Bs')
+            Card::make('Ingresos del día', number_format($totalIngresos, 2) . ' Bs')
                 ->description('Ventas, sesiones, planes, casilleros')
                 ->color('success')
                 ->icon('heroicon-o-currency-dollar'),
 
-            Card::make('💸 Egresos del día', number_format($totalEgresos, 2) . ' Bs')
+            Card::make('Egresos del día', number_format($totalEgresos, 2) . ' Bs')
                 ->description('Pagos a personal y productos')
                 ->color('danger')
                 ->icon('heroicon-o-arrow-trending-down'),
 
-            Card::make('📈 Utilidad del día', number_format($totalIngresos - $totalEgresos, 2) . ' Bs')
+            Card::make('Utilidad del día', number_format($totalIngresos - $totalEgresos, 2) . ' Bs')
                 ->description('Balance neto del día')
                 ->color('primary')
                 ->icon('heroicon-o-banknotes'),
         ];
     }
 
-    public function getColumnSpan(): int|string
-    {
-        return 4;
-    }
 }

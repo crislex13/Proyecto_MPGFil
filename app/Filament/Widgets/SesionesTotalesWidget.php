@@ -7,6 +7,7 @@ use App\Models\SesionAdicional;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Card;
 use Carbon\Carbon;
+use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 class SesionesTotalesWidget extends StatsOverviewWidget
 {
@@ -20,22 +21,17 @@ class SesionesTotalesWidget extends StatsOverviewWidget
             ->count();
 
         return [
-            Card::make('📦 Sesiones este mes', $mesActual)
+            Card::make('Sesiones este mes', $mesActual)
                 ->description('Contratadas en ' . now()->format('F'))
                 ->color('info')
                 ->icon('heroicon-o-calendar-days'),
 
-            Card::make('📆 Sesiones este año', $añoActual)
+            Card::make('Sesiones este año', $añoActual)
                 ->description('Total en ' . now()->format('Y'))
                 ->color('success')
                 ->icon('heroicon-o-chart-bar'),
         ];
     }
 
-    public function getColumnSpan(): int|string
-    {
-        return 4;
-    }
 
-    //protected static ?int $sort = 1;
 }

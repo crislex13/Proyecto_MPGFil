@@ -6,9 +6,11 @@ use App\Models\DetalleVentaProducto;
 use App\Models\productos;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
+use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 class ProductoTopWidget extends Widget
 {
+
     protected static string $view = 'filament.widgets.producto-top-widget';
     protected static ?int $sort = 3;
 
@@ -34,8 +36,4 @@ class ProductoTopWidget extends Widget
         }
     }
 
-    public function getColumnSpan(): int|string
-    {
-        return 2;
-    }
 }

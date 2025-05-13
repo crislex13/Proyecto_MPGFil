@@ -10,10 +10,16 @@ use App\Models\SesionAdicional;
 use App\Models\IngresoProducto;
 use App\Models\PagoPersonal;
 use Filament\Widgets\ChartWidget;
+use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 class FlujoCajaSemana extends ChartWidget
 {
-    protected static ?string $heading = '📊 Flujo de Caja - Últimos 7 días';
+    public static function canView(): bool
+    {
+        return auth()->check() && auth()->user()->hasRole('admin');
+    }
+
+    protected static ?string $heading = 'Flujo de Caja - Últimos 7 días';
     protected static ?int $sort = 5;
 
     protected function getData(): array
@@ -81,6 +87,21 @@ class FlujoCajaSemana extends ChartWidget
 
     public function getColumnSpan(): int|string
     {
-        return 1;
+        return 3;
+    }
+
+    protected function getChartOptions(): array
+    {
+        return [
+            'maintainAspectRatio' => false,
+            'responsive' => true,
+        ];
+    }
+
+    public function getExtraAttributes(): array
+    {
+        return [
+            'class' => 'h-[180px] max-h-[180px] overflow-hidden',
+        ];
     }
 }

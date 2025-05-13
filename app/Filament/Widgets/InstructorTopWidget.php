@@ -7,9 +7,11 @@ use App\Models\Personal;
 use Carbon\Carbon;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Collection;
+use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 class InstructorTopWidget extends Widget
 {
+
     protected static string $view = 'filament.widgets.instructor-top-widget';
     protected static ?int $sort = 2;
 
@@ -43,8 +45,5 @@ class InstructorTopWidget extends Widget
             $this->totalGanancias = $sesionesInstructor->sum('precio');
         }
     }
-    public function getColumnSpan(): int|string
-    {
-        return 2;
-    }
+    
 }

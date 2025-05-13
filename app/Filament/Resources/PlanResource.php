@@ -48,22 +48,37 @@ class PlanResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('view_any_plan');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_plan');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_plan');
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('create_plan');
     }
 
     public static function canEdit($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('update_plan');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_plan');
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_plan');
     }
 
     public static function form(Form $form): Form

@@ -52,22 +52,37 @@ class ProductoResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'supervisor', 'recepcionista']);
+        return auth()->user()?->can('view_any_producto');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_producto');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_producto');
     }
 
     public static function canCreate(): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('create_producto');
     }
 
     public static function canEdit($record): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('update_producto');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_producto');
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_producto');
     }
 
     public static function form(Form $form): Form

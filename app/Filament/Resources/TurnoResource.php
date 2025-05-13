@@ -50,22 +50,37 @@ class TurnoResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'supervisor']);
+        return auth()->user()?->can('view_any_turno');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->can('view_any_turno');
+    }
+
+    public static function canView($record): bool
+    {
+        return auth()->user()?->can('view_turno');
     }
 
     public static function canCreate(): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('create_turno');
     }
 
     public static function canEdit($record): bool
     {
-        return self::shouldRegisterNavigation();
+        return auth()->user()?->can('update_turno');
     }
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->hasRole('admin');
+        return auth()->user()?->can('delete_turno');
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->can('delete_any_turno');
     }
 
 

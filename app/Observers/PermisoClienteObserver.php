@@ -20,7 +20,7 @@ class PermisoClienteObserver
                 ->where('estado', 'aprobado')
                 ->whereMonth('fecha', $mes)
                 ->whereYear('fecha', $anio)
-                // Excluir el permiso actual si ya está guardado (por si es una edición)
+
                 ->when($permiso->exists, fn($q) => $q->where('id', '!=', $permiso->id))
                 ->count();
 
@@ -28,7 +28,7 @@ class PermisoClienteObserver
                 $permiso->estado = 'pendiente';
 
                 Notification::make()
-                    ->title('🚫 Límite de permisos alcanzado')
+                    ->title('Límite de permisos alcanzado')
                     ->body('Este cliente ya tiene 3 permisos aprobados este mes.')
                     ->danger()
                     ->send();

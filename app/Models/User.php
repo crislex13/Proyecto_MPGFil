@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes, HasRoles;
+    use HasFactory, Notifiable, SoftDeletes, HasRoles, HasPanelShield;
 
     protected $fillable = [
         'name',
@@ -45,5 +46,16 @@ class User extends Authenticatable
     public function getEnLineaAttribute(): bool
     {
         return $this->last_login_at && $this->last_login_at->gt(now()->subMinutes(5));
+    }
+
+    public function canAccessPanel(string $panel): bool
+    {
+        return match ($panel) {
+            'admin' => $this->hasAnyRole(['admin', 'supervisor', 'recepcionista']),
+            'cliente-dashboard' => $this->hasRole('cliente'),
+            'instructor-dashboard' => $this->hasRole('instructor'),
+            'dashboard-multiples' => $this->hasAnyRole(['cliente', 'instructor']),
+            default => false,
+        };
     }
 }
