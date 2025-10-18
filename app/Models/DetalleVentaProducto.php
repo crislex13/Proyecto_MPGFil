@@ -6,17 +6,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Productos;
 use App\Models\VentaProducto;
+use App\Models\LoteProducto;
+use App\Traits\HasAuditoria;
 
 class DetalleVentaProducto extends Model
 {
+    use HasAuditoria;
+
     protected $table = 'detalle_ventas_productos';
 
     protected $fillable = [
         'venta_producto_id',
         'producto_id',
+        'lote_producto_id',
+        'lote_origen_id',
+        'cantidad_convertida_desde_paquete',
         'cantidad',
         'precio_unitario',
         'subtotal',
+        'registrado_por',
+        'modificado_por',
     ];
 
     public function producto(): BelongsTo
@@ -29,30 +38,15 @@ class DetalleVentaProducto extends Model
         return $this->belongsTo(VentaProducto::class, 'venta_producto_id');
     }
 
+    public function lote(): BelongsTo
+    {
+        return $this->belongsTo(LoteProducto::class, 'lote_producto_id');
+    }
+
     protected static function booted()
     {
-        
         static::created(function ($detalle) {
-            $venta = VentaProducto::find($detalle->venta_producto_id);
-            if ($venta) {
-                $venta->update([
-                    'total' => $venta->detalles()->sum('subtotal'),
-                ]);
-            }
-        });
-
-        static::deleted(function ($detalle) {
-            $producto = $detalle->producto;
-            if ($producto) {
-                $producto->increment('stock_unidades', $detalle->cantidad);
-            }
-
-            $venta = VentaProducto::find($detalle->venta_producto_id);
-            if ($venta) {
-                $venta->update([
-                    'total' => $venta->detalles()->sum('subtotal'),
-                ]);
-            }
+            $detalle->actualizarTotalVenta();
         });
     }
 
@@ -60,8 +54,13 @@ class DetalleVentaProducto extends Model
     {
         $venta = $this->ventaProducto;
         if ($venta) {
-            $venta->total = $venta->detalles()->sum('subtotal');
-            $venta->save();
+            $venta->update([
+                'total' => $venta->detalles()->sum('subtotal'),
+            ]);
         }
+    }
+    public function loteOrigen(): BelongsTo
+    {
+        return $this->belongsTo(LoteProducto::class, 'lote_origen_id');
     }
 }

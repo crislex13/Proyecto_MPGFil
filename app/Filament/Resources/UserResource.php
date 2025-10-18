@@ -78,12 +78,12 @@ class UserResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_user');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_user');
+        return false;
     }
     public static function form(Form $form): Form
     {

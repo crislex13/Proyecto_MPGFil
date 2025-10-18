@@ -80,12 +80,12 @@ class AsistenciaResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_asistencia');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_asistencia');
+        return false;
     }
     public static function form(Form $form): Form
     {

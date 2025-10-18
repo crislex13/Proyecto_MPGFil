@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use App\Models\PermisoCliente;
+use App\Traits\HasAuditoria;
 
 
 class PlanCliente extends Model
 {
+    use HasAuditoria;
     protected $table = 'planes_clientes';
 
     protected $fillable = [
@@ -26,6 +28,8 @@ class PlanCliente extends Model
         'comprobante',
         'estado',
         'dias_permitidos',
+        'registrado_por',
+        'modificado_por',
     ];
 
     protected $casts = [

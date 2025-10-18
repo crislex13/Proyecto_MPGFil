@@ -6,8 +6,6 @@ use App\Filament\Resources\ClientesResource;
 use Filament\Resources\Pages\CreateRecord;
 use App\Models\Clientes;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Filament\Notifications\Notification;
 
 class CreateClientes extends CreateRecord
@@ -16,7 +14,6 @@ class CreateClientes extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Validar duplicado de CI
         if (Clientes::where('ci', $data['ci'])->exists()) {
             Notification::make()
                 ->title('❌ CI duplicado')
@@ -24,10 +21,9 @@ class CreateClientes extends CreateRecord
                 ->danger()
                 ->send();
 
-            $this->halt(); // Detiene la ejecución
+            $this->halt();
         }
 
-        // Formateo de imagen si existe
         if (!empty($data['foto'])) {
             $data['foto'] = str_replace('public/', '', $data['foto']);
         }
@@ -57,7 +53,6 @@ class CreateClientes extends CreateRecord
             ]
         );
 
-        // Actualizar datos si ya existía
         $user->update([
             'name' => "{$cliente->nombre} {$cliente->apellido_paterno}",
             'foto' => $cliente->foto,
@@ -65,7 +60,6 @@ class CreateClientes extends CreateRecord
             'username' => $username,
         ]);
 
-        // Asignar rol si aún no lo tiene
         if (!$user->hasRole('cliente')) {
             $user->assignRole('cliente');
         }

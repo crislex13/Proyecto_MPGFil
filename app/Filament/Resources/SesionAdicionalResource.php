@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
+use Carbon\Carbon;
 
 
 class SesionAdicionalResource extends Resource
@@ -79,12 +80,12 @@ class SesionAdicionalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_sesion::adicional');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_sesion::adicional');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -136,13 +137,17 @@ class SesionAdicionalResource extends Resource
                     DatePicker::make('fecha')
                         ->label('Fecha de la sesión')
                         ->required()
+                        ->minDate(Carbon::create(2020, 1, 1))
+                        ->maxDate(now())
                         ->placeholder('Seleccione la fecha'),
 
                     TextInput::make('precio')
                         ->label('Precio (Bs.)')
                         ->numeric()
-                        ->minValue(1)
+                        ->minValue(0)
+                        ->maxValue(500)
                         ->required()
+                        ->helperText('Debe estar entre 0 y 500 Bs.')
                         ->placeholder('Ej: 50.00 Bs'),
                 ]),
         ]);
@@ -176,7 +181,7 @@ class SesionAdicionalResource extends Resource
                                 ->orWhere('apellido_materno', 'like', "%$search%")
                         )
                     )
-                    ->sortable(),
+                    ->sortable(['nombre', 'apellido_paterno', 'apellido_materno']),
 
                 ImageColumn::make('instructor.foto_url')
                     ->label('Foto Instructor')

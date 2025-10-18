@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\SesionAdicional;
+use App\Traits\HasAuditoria;
 
 class Asistencia extends Model
 {
+    use HasAuditoria;
     protected $table = 'asistencias';
 
     protected $fillable = [
@@ -23,6 +24,8 @@ class Asistencia extends Model
         'origen',
         'usuario_registro_id',
         'sesion_adicional_id',
+        'registrado_por',
+        'modificado_por',
     ];
 
 

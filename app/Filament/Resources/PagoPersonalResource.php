@@ -80,12 +80,12 @@ class PagoPersonalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_pago::personal');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_pago::personal');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -96,7 +96,7 @@ class PagoPersonalResource extends Resource
                 ->icon('heroicon-o-currency-dollar')
                 ->schema([
                     Select::make('personal_id')
-                        ->label('Instructor')
+                        ->label('Personal')
                         ->relationship(
                             name: 'personal',
                             titleAttribute: 'nombre_completo',
@@ -108,9 +108,9 @@ class PagoPersonalResource extends Resource
                         )
                         ->getOptionLabelFromRecordUsing(fn($record) => $record->nombre_completo)
                         ->searchable()
-                        ->preload() // <-- Esto hace que cargue como en clientes
+                        ->preload()
                         ->required()
-                        ->placeholder('Seleccione al instructor'),
+                        ->placeholder('Seleccione al personal'),
 
                     ViewField::make('personal_foto')
                         ->view('components.personal-foto') // ✅ Esto SÍ funciona, sin envolverlo
@@ -230,7 +230,23 @@ class PagoPersonalResource extends Resource
                 TextColumn::make('descripcion')
                     ->label('Descripción')
                     ->limit(30)
-                    ->wrap()
+                    ->wrap(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('pagado')
@@ -292,5 +308,17 @@ class PagoPersonalResource extends Resource
             'create' => Pages\CreatePagoPersonal::route('/create'),
             'edit' => Pages\EditPagoPersonal::route('/{record}/edit'),
         ];
+    }
+
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['registrado_por'] = auth()->id();
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['modificado_por'] = auth()->id();
+        return $data;
     }
 }

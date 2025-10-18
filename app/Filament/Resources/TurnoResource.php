@@ -75,12 +75,12 @@ class TurnoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_turno');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_turno');
+        return false;
     }
 
 
@@ -271,6 +271,22 @@ class TurnoResource extends Resource
                     ->formatStateUsing(fn($state) => $state === 'activo' ? 'Activo' : 'Inactivo')
                     ->sortable()
                     ->icon('heroicon-o-light-bulb'),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('estado')
@@ -362,5 +378,17 @@ class TurnoResource extends Resource
             'create' => Pages\CreateTurno::route('/create'),
             'edit' => Pages\EditTurno::route('/{record}/edit'),
         ];
+    }
+
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['registrado_por'] = auth()->id();
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['modificado_por'] = auth()->id();
+        return $data;
     }
 }

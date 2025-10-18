@@ -71,12 +71,12 @@ class PlanDisciplinaResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_plan::disciplina');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_plan::disciplina');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -112,6 +112,19 @@ class PlanDisciplinaResource extends Resource
         ]);
     }
 
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['registrado_por'] = auth()->id();
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['modificado_por'] = auth()->id();
+        return $data;
+    }
+
+
     public static function table(Table $table): Table
     {
         return $table
@@ -133,6 +146,22 @@ class PlanDisciplinaResource extends Resource
                     ->icon('heroicon-o-currency-dollar')
                     ->money('BOB')
                     ->sortable(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('plan_id')
@@ -145,7 +174,34 @@ class PlanDisciplinaResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar precio'),
-                Tables\Actions\DeleteAction::make()->tooltip('Eliminar precio'),
+                Tables\Actions\Action::make('ver')
+                    ->label('Ver Detalles')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading('Detalles del Precio de Plan')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->form(fn(PlanDisciplina $record) => [
+                        Section::make('Información del Precio')
+                            ->icon('heroicon-o-currency-dollar')
+                            ->schema([
+                                TextInput::make('plan')
+                                    ->label('Plan')
+                                    ->default($record->plan?->nombre)
+                                    ->disabled(),
+
+                                TextInput::make('disciplina')
+                                    ->label('Disciplina')
+                                    ->default($record->disciplina?->nombre)
+                                    ->disabled(),
+
+                                TextInput::make('precio')
+                                    ->label('Precio (Bs.)')
+                                    ->default(number_format($record->precio, 2))
+                                    ->disabled(),
+                            ])
+                            ->columns(2),
+                    ]),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

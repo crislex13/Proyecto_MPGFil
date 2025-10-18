@@ -28,6 +28,7 @@ class ClienteDashboard extends Page
     public static function canAccess(): bool
     {
         return Auth::user()?->hasRole('cliente');
+        
     }
 
     public function mount()
@@ -38,4 +39,5 @@ class ClienteDashboard extends Page
             'sesionesAdicionales',
         ])->where('user_id', auth()->id())->firstOrFail();
     }
+    
 }

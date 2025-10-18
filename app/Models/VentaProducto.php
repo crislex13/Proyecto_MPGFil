@@ -5,15 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\HasAuditoria;
 
 class VentaProducto extends Model
 {
+    use HasAuditoria;
     protected $table = 'ventas_productos';
     protected $fillable = [
         'usuario_id',
         'metodo_pago',
         'total',
         'fecha',
+        'registrado_por',
+        'modificado_por',
     ];
 
     protected $casts = [
@@ -29,5 +33,5 @@ class VentaProducto extends Model
     {
         return $this->hasMany(DetalleVentaProducto::class, 'venta_producto_id');
     }
-    
+
 }

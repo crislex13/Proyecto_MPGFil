@@ -54,7 +54,6 @@
                     <li><a href="#hero" class="active">Inicio</a></li>
                     <li><a href="#about">Acerca de</a></li>
                     <li><a href="#services">Servicios</a></li>
-                    <li><a href="#team">Equipo</a></li>
                     <li><a href="#contact">Contacto</a></li>
                 </ul>
                 <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
@@ -73,34 +72,30 @@
                 data-bs-interval="5000">
 
                 <div class="carousel-item active">
-                    <img src="bienvenida/assets/img/hero-carousel/hero-carousel-1.jpg" alt="">
+                    <img src="bienvenida/assets/img/hero-carousel/Max-Power-Gym 1.jpg" alt="">
                     <div class="carousel-container">
                         <h2>Bienvenido a Max Power Gym<br></h2>
-                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-                            labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco
-                            laboris nisi ut aliquip ex ea commodo consequat.</p>
+                        <p>Entrena donde se entrena en serio, Salas amplias, piso deportivo, iluminación LED y un
+                            ambiente que te empuja a dar tu mejor versión.</p>
                         <a href="{{ route('login') }}" class="btn-get-started">Comenzar</a>
                     </div>
                 </div><!-- Fin del ítem del carrusel -->
 
                 <div class="carousel-item">
-                    <img src="bienvenida/assets/img/hero-carousel/hero-carousel-2.jpg" alt="">
+                    <img src="bienvenida/assets/img/hero-carousel/Max Power Gym 3.jpg" alt="">
                     <div class="carousel-container">
-                        <h2>At vero eos et accusamus</h2>
-                        <p>Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id
-                            quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus.
-                            Temporibus autem quibusdam et aut officiis debitis aut.</p>
+                        <h2>Fuerza, cardio y clases dirigidas</h2>
+                        <p>Programas para todos los niveles. Entrena con método, mide tu progreso y rompe tus marcas.
+                        </p>
                         <a href="{{ route('login') }}" class="btn-get-started">Comenzar</a>
                     </div>
                 </div><!-- Fin del ítem del carrusel -->
 
                 <div class="carousel-item">
-                    <img src="bienvenida/assets/img/hero-carousel/hero-carousel-3.jpg" alt="">
+                    <img src="bienvenida/assets/img/hero-carousel/Max Power Gym 6.jpg" alt="">
                     <div class="carousel-container">
-                        <h2>Temporibus autem quibusdam</h2>
-                        <p>Beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur
-                            aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi
-                            nesciunt omnis iste natus error sit voluptatem accusantium.</p>
+                        <h2>Rompe tus límites</h2>
+                        <p>Equipo moderno, coaches atentos y disciplina diaria. Aquí las excusas sobran.</p>
                         <a href="{{ route('login') }}" class="btn-get-started">Comenzar</a>
                     </div>
                 </div><!-- Fin del ítem del carrusel -->
@@ -134,25 +129,29 @@
 
                     <div class="col-lg-6 content" data-aos="fade-up" data-aos-delay="100">
                         <p>
-                            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-                            labore et dolore
-                            magna aliqua.
+                            En <strong>Max Power Gym</strong> creemos que la fuerza no solo se construye con pesas, sino
+                            con disciplina, constancia y mentalidad.
+                            Somos un espacio creado para quienes no buscan excusas, sino resultados reales.
+                            Aquí cada entrenamiento cuenta, cada día suma y cada esfuerzo deja huella.
                         </p>
                         <ul>
-                            <li><i class="bi bi-check2-circle"></i> <span>Trabajo sin restricciones y con
-                                    beneficios</span></li>
-                            <li><i class="bi bi-check2-circle"></i> <span>Exploración de nuevas oportunidades para
-                                    crecer</span></li>
-                            <li><i class="bi bi-check2-circle"></i> <span>Trabajo sin compromisos ni condiciones
-                                    limitantes</span></li>
+                            <li><i class="bi bi-check2-circle"></i> <span>Ambientes amplios y equipados con tecnología
+                                    de alto rendimiento.</span></li>
+                            <li><i class="bi bi-check2-circle"></i> <span>Entrenadores profesionales que te acompañan en
+                                    cada objetivo.</span></li>
+                            <li><i class="bi bi-check2-circle"></i> <span>Rutinas personalizadas, control de acceso
+                                    biométrico y seguimiento de progreso.</span></li>
                         </ul>
                     </div>
 
                     <div class="col-lg-6" data-aos="fade-up" data-aos-delay="200">
-                        <p>Trabajo sin restricciones y con beneficios. Buscar alternativas que nos ayuden a resolver
-                            cualquier reto con eficacia. Hacerlo siempre en un entorno que permita el desarrollo
-                            continuo y la satisfacción.</p>
-                        <a href="#" class="read-more"><span>Leer Más</span><i class="bi bi-arrow-right"></i></a>
+                        <p>
+                            Más que un gimnasio, somos una comunidad enfocada en el crecimiento físico y mental.
+                            Nuestro compromiso es brindarte un entorno seguro, moderno y motivador para que entrenes con
+                            energía y determinación.
+                        </p>
+                        <a href="#services" class="read-more"><span>Descubre nuestros servicios</span><i
+                                class="bi bi-arrow-right"></i></a>
                     </div>
 
                 </div>
@@ -163,112 +162,132 @@
 
 
         <!-- Sección de Estadísticas -->
+        <!-- Sección de Estadísticas -->
         <section id="stats" class="stats section">
-
             <div class="container" data-aos="fade-up" data-aos-delay="100">
-
                 <div class="row gy-4">
 
-                    <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
-                        <i class="bi bi-emoji-smile"></i>
-                        <div class="stats-item">
-                            <span data-purecounter-start="0" data-purecounter-end="298" data-purecounter-duration="1"
-                                class="purecounter"></span>
-                            <p>Clientes Felices</p>
-                        </div>
-                    </div><!-- Fin del ítem de Estadísticas -->
-
-                    <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
-                        <i class="bi bi-journal-richtext"></i>
-                        <div class="stats-item">
-                            <span data-purecounter-start="0" data-purecounter-end="521" data-purecounter-duration="1"
-                                class="purecounter"></span>
-                            <p>Proyectos</p>
-                        </div>
-                    </div><!-- Fin del ítem de Estadísticas -->
-
-                    <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
-                        <i class="bi bi-headset"></i>
-                        <div class="stats-item">
-                            <span data-purecounter-start="0" data-purecounter-end="1463" data-purecounter-duration="1"
-                                class="purecounter"></span>
-                            <p>Horas de Soporte</p>
-                        </div>
-                    </div><!-- Fin del ítem de Estadísticas -->
-
+                    <!-- Socios activos -->
                     <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
                         <i class="bi bi-people"></i>
                         <div class="stats-item">
-                            <span data-purecounter-start="0" data-purecounter-end="15" data-purecounter-duration="1"
+                            <span data-purecounter-start="0" data-purecounter-end="650" data-purecounter-duration="1"
                                 class="purecounter"></span>
-                            <p>Trabajadores Dedicados</p>
+                            <p>Socios activos</p>
                         </div>
-                    </div><!-- Fin del ítem de Estadísticas -->
+                    </div>
+
+                    <!-- Clases dirigidas por semana -->
+                    <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+                        <i class="bi bi-calendar-check"></i>
+                        <div class="stats-item">
+                            <span data-purecounter-start="0" data-purecounter-end="40" data-purecounter-duration="1"
+                                class="purecounter"></span>
+                            <p>Clases dirigidas / semana</p>
+                        </div>
+                    </div>
+
+                    <!-- Equipamiento (máquinas y accesorios) -->
+                    <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+                        <i class="bi bi-lightning-charge"></i>
+                        <div class="stats-item">
+                            <span data-purecounter-start="0" data-purecounter-end="150" data-purecounter-duration="1"
+                                class="purecounter"></span>
+                            <p>Equipos y accesorios</p>
+                        </div>
+                    </div>
+
+                    <!-- Staff (coaches + recepción) -->
+                    <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+                        <i class="bi bi-person-check"></i>
+                        <div class="stats-item">
+                            <span data-purecounter-start="0" data-purecounter-end="18" data-purecounter-duration="1"
+                                class="purecounter"></span>
+                            <p>Coaches y staff</p>
+                        </div>
+                    </div>
 
                 </div>
-
             </div>
-
         </section><!-- /Sección de Estadísticas -->
 
 
         <!-- Sección de Características -->
+        <!-- Sección de Características -->
         <section id="features" class="features section">
-
             <div class="container">
-
                 <div class="row gy-4">
 
+                    <!-- 1. Ambientes de alto rendimiento -->
                     <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                        <h3>Quasi eaque omnis</h3>
-                        <p>No obstante, su solución es tal que, por trabajo, cualquier corrupción es evitada, y se odia
-                            la avaricia que causa molestias grandes.</p>
+                        <h3>Ambientes de alto rendimiento</h3>
+                        <p>
+                            Entrenar en serio exige un espacio a la altura. En Max Power Gym cuentas con salas amplias,
+                            pisos deportivos y grilla LED que eleva la energía. Aquí se viene a concentrarse, ejecutar y
+                            progresar.
+                        </p>
                         <ul class="list-unstyled">
-                            <li><i class="bi bi-check2"></i> <span>Trabajo que no excluye ningún elemento</span></li>
-                            <li><i class="bi bi-check2"></i> <span>Dolor frecuente que interrumpe el camino</span></li>
-                            <li><i class="bi bi-check2"></i> <span>Trabajo dedicado a un fin superior</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Espacios grandes, ordenados y ventilados.</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Espejos de pared completa para cuidar la
+                                    técnica.</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Ambiente motivador sin distracciones.</span></li>
                         </ul>
-                    </div><!-- Fin de item de característica-->
+                    </div>
 
+                    <!-- 2. Clases que exigen y motivan -->
                     <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                        <h3>Y nadie tiene dolores en común</h3>
-                        <p>El trabajo debe ser preciso, pero tiene consecuencias que no siempre son conocidas. A veces
-                            nos enfrentamos a situaciones que parecen imposibles de resolver.</p>
-
+                        <h3>Clases que exigen y motivan</h3>
+                        <p>
+                            Funcional, fuerza, core, baile y HIIT. Programas pensados para todos los niveles con
+                            progresión real.
+                            Vienes, das lo mejor, sudas la camiseta y te vas con la sensación de haber cumplido.
+                        </p>
                         <ul class="list-unstyled">
-                            <li><i class="bi bi-check2"></i> <span>Alternativas disponibles en todo momento</span></li>
-                            <li><i class="bi bi-check2"></i> <span>Es posible obtener las mejores soluciones</span></li>
-                            <li><i class="bi bi-check2"></i> <span>Obras complejas que requieren esfuerzo</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Metodologías claras y escalables.</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Coaches atentos a postura y seguridad.</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Horarios amplios para no faltar al
+                                    entrenamiento.</span></li>
                         </ul>
-                    </div><!-- Fin de item de característica-->
+                    </div>
 
+                    <!-- 3. Equipamiento y tecnología -->
                     <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                        <h3>El trabajo arduo tiene su recompensa</h3>
-                        <p>Las dificultades aparecen, pero lo importante es enfrentarlas con valentía, buscando la
-                            solución sin ceder al miedo.</p>
+                        <h3>Equipamiento y tecnología</h3>
+                        <p>
+                            Máquinas de fuerza, zona de cardio y accesorios listos para trabajar como se debe.
+                            Control de accesos y procesos pensados para que tu tiempo rinda de principio a fin.
+                        </p>
                         <ul class="list-unstyled">
-                            <li><i class="bi bi-check2"></i> <span>El esfuerzo siempre tiene un resultado</span></li>
-                            <li><i class="bi bi-check2"></i> <span>Las dificultades son superadas con trabajo</span>
+                            <li><i class="bi bi-check2"></i> <span>Equipos de alto desempeño y mantenimiento
+                                    constante.</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Accesorios completos para cada grupo muscular.</span>
+                            </li>
+                            <li><i class="bi bi-check2"></i> <span>Gestión ágil: ingreso rápido y orden en piso.</span>
                             </li>
                         </ul>
-                    </div><!-- Fin de item de característica-->
+                    </div>
 
+                    <!-- 4. Disciplina, seguridad y comunidad -->
                     <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                        <h3>El compromiso siempre vale la pena</h3>
-                        <p>A veces las situaciones nos desafían, pero el trabajo perseverante es lo que nos permite
-                            seguir adelante.</p>
+                        <h3>Disciplina, seguridad y comunidad</h3>
+                        <p>
+                            No vendemos fórmulas mágicas: vendemos constancia. Cuidamos el respeto, la higiene y la
+                            técnica.
+                            La meta es simple: que entrenes hoy, mañana y pasado… y veas resultados medibles.
+                        </p>
                         <ul class="list-unstyled">
-                            <li><i class="bi bi-check2"></i> <span>La verdad siempre prevalece</span></li>
-                            <li><i class="bi bi-check2"></i> <span>El esfuerzo constante lleva al éxito</span></li>
-                            <li><i class="bi bi-check2"></i> <span>Las recompensas llegan con dedicación</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Normas claras para entrenar sin excusas.</span></li>
+                            <li><i class="bi bi-check2"></i> <span>Protocolos de seguridad y soporte del staff.</span>
+                            </li>
+                            <li><i class="bi bi-check2"></i> <span>Comunidad que empuja hacia el siguiente nivel.</span>
+                            </li>
                         </ul>
-                    </div><!-- Fin de item de característica-->
+                    </div>
 
                 </div>
-
             </div>
-
-        </section><!-- /Sección de Características -->
+        </section>
+        <!-- /Sección de Características -->
 
 
         <!-- Sección de Servicios -->
@@ -277,462 +296,168 @@
             <!-- Título de la Sección -->
             <div class="container section-title" data-aos="fade-up">
                 <h2>Servicios</h2>
-                <div><span>Consulta Nuestros</span> <span class="description-title">Servicios</span></div>
-            </div><!-- Fin del Título de la Sección -->
-
-            <div class="container">
-
-                <div class="row gy-4">
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                        <div class="service-item  position-relative">
-                            <div class="icon">
-                                <i class="bi bi-activity"></i>
-                            </div>
-                            <a href="service-details.html" class="stretched-link">
-                                <h3>Nesciunt Mete</h3>
-                            </a>
-                            <p>Proporciona lo necesario para garantizar la mejor experiencia. Eos accusantium minus
-                                dolores iure perferendis tiempo y resultados.</p>
-                        </div>
-                    </div><!-- Fin del Elemento de Servicio -->
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                        <div class="service-item position-relative">
-                            <div class="icon">
-                                <i class="bi bi-broadcast"></i>
-                            </div>
-                            <a href="service-details.html" class="stretched-link">
-                                <h3>Eosle Commodi</h3>
-                            </a>
-                            <p>Ofrecemos soluciones adaptadas a tus necesidades. Nuestro equipo trabaja para brindarte
-                                el mejor servicio posible.</p>
-                        </div>
-                    </div><!-- Fin del Elemento de Servicio -->
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                        <div class="service-item position-relative">
-                            <div class="icon">
-                                <i class="bi bi-easel"></i>
-                            </div>
-                            <a href="service-details.html" class="stretched-link">
-                                <h3>Ledo Markt</h3>
-                            </a>
-                            <p>Servicios exclusivos diseñados para satisfacer todas tus expectativas. Calidad y
-                                confianza en cada entrega.</p>
-                        </div>
-                    </div><!-- Fin del Elemento de Servicio -->
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                        <div class="service-item position-relative">
-                            <div class="icon">
-                                <i class="bi bi-bounding-box-circles"></i>
-                            </div>
-                            <a href="service-details.html" class="stretched-link">
-                                <h3>Asperiores Commodit</h3>
-                            </a>
-                            <p>Soluciones personalizadas para cada cliente. Atención excepcional y resultados
-                                garantizados.</p>
-                        </div>
-                    </div><!-- Fin del Elemento de Servicio -->
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
-                        <div class="service-item position-relative">
-                            <div class="icon">
-                                <i class="bi bi-calendar4-week"></i>
-                            </div>
-                            <a href="service-details.html" class="stretched-link">
-                                <h3>Velit Doloremque</h3>
-                            </a>
-                            <p>Compromiso y dedicación en cada proyecto. Nuestro equipo está listo para brindarte el
-                                mejor soporte.</p>
-                        </div>
-                    </div><!-- Fin del Elemento de Servicio -->
-
-                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
-                        <div class="service-item position-relative">
-                            <div class="icon">
-                                <i class="bi bi-chat-square-text"></i>
-                            </div>
-                            <a href="service-details.html" class="stretched-link">
-                                <h3>Dolori Architecto</h3>
-                            </a>
-                            <p>Soluciones innovadoras adaptadas a tus necesidades. Confía en nuestra experiencia para
-                                obtener los mejores resultados.</p>
-                        </div>
-                    </div><!-- Fin del Elemento de Servicio -->
-
-                </div>
-
+                <div><span>Conoce nuestros</span> <span class="description-title">Servicios</span></div>
             </div>
 
+            <div class="container">
+                <div class="row gy-4">
+
+                    <!-- 1 -->
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                        <div class="service-item position-relative">
+                            <div class="icon"><i class="bi bi-lightning-charge"></i></div>
+                            <h3>Musculación y fuerza</h3>
+                            <p>
+                                Entrenamiento estructurado para construir fuerza real: progresiones semanales, técnica
+                                correcta y
+                                acompañamiento del staff. Zona de pesas completa para trabajar cada grupo muscular sin
+                                perder tiempo.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 2 -->
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+                        <div class="service-item position-relative">
+                            <div class="icon"><i class="bi bi-heart-pulse"></i></div>
+                            <h3>Cardio y resistencia</h3>
+                            <p>
+                                Cintas, elípticas y bicicletas para mejorar capacidad aeróbica y control de peso.
+                                Protocolos HIIT y trabajo
+                                en zona para maximizar resultados sin sesiones eternas.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 3 -->
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
+                        <div class="service-item position-relative">
+                            <div class="icon"><i class="bi bi-people"></i></div>
+                            <h3>Clases dirigidas</h3>
+                            <p>
+                                Funcional, fuerza, core y baile. Ritmo, técnica y motivación en grupo, con opciones para
+                                principiantes y
+                                avanzados. Saldrás cansado, pero contento.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 4 -->
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
+                        <div class="service-item position-relative">
+                            <div class="icon"><i class="bi bi-clipboard-check"></i></div>
+                            <h3>Evaluación y plan</h3>
+                            <p>
+                                Diagnóstico inicial, objetivos claros y rutina personalizada. Ajustes periódicos para
+                                que el progreso no se
+                                estanque y la técnica siempre sea segura.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 5 -->
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
+                        <div class="service-item position-relative">
+                            <div class="icon"><i class="bi bi-qr-code-scan"></i></div>
+                            <h3>Membresías y accesos</h3>
+                            <p>
+                                Planes flexibles y control de ingreso para una experiencia ordenada. Horarios amplios y
+                                normas claras:
+                                entrenas sin filas, sin excusas y sin perder el enfoque.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 6 -->
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
+                        <div class="service-item position-relative">
+                            <div class="icon"><i class="bi bi-bag-check"></i></div>
+                            <h3>Tienda & recovery</h3>
+                            <p>
+                                Hidratación y accesorios básicos para complementar tu sesión. Enfriamiento y
+                                estiramientos guiados para
+                                cuidar articulaciones y acelerar la recuperación.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </section><!-- /Sección de Servicios -->
 
 
-        <!-- Sección de Testimonios -->
-        <section id="testimonials" class="testimonials section light-background">
-
-            <!-- Título de la Sección -->
-            <div class="container section-title" data-aos="fade-up">
-                <h2>Testimonios</h2>
-                <div><span>Consulta nuestros</span> <span class="description-title">Testimonios</span></div>
-            </div><!-- Fin del Título de la Sección -->
-
-            <div class="container" data-aos="fade-up" data-aos-delay="100">
-
-                <div class="swiper init-swiper">
-                    <script type="application/json" class="swiper-config">
-    {
-      "loop": true,
-      "speed": 600,
-      "autoplay": {
-        "delay": 5000
-      },
-      "slidesPerView": "auto",
-      "pagination": {
-        "el": ".swiper-pagination",
-        "type": "bullets",
-        "clickable": true
-      },
-      "breakpoints": {
-        "320": {
-          "slidesPerView": 1,
-          "spaceBetween": 40
-        },
-        "1200": {
-          "slidesPerView": 2,
-          "spaceBetween": 20
-        }
-      }
-    }
-  </script>
-                    <div class="swiper-wrapper">
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-wrap">
-                                <div class="testimonial-item">
-                                    <img src="bienvenida/assets/img/testimonials/testimonials-1.jpg" class="testimonial-img"
-                                        alt="">
-                                    <h3>Saul Goodman</h3>
-                                    <h4>CEO &amp; Fundador</h4>
-                                    <div class="stars">
-                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i>
-                                    </div>
-                                    <p>
-                                        <i class="bi bi-quote quote-icon-left"></i>
-                                        <span>Proin iaculis purus consequat sem cure dignissim donec porttitor elementum
-                                            suscipit rhoncus. Accusantium quam, ultricies eget id, aliquam eget nibh et.
-                                            Maecenas aliquam, risus at semper.</span>
-                                        <i class="bi bi-quote quote-icon-right"></i>
-                                    </p>
-                                </div>
-                            </div>
-                        </div><!-- Fin del Testimonio -->
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-wrap">
-                                <div class="testimonial-item">
-                                    <img src="bienvenida/assets/img/testimonials/testimonials-2.jpg" class="testimonial-img"
-                                        alt="">
-                                    <h3>Sara Wilsson</h3>
-                                    <h4>Diseñadora</h4>
-                                    <div class="stars">
-                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i>
-                                    </div>
-                                    <p>
-                                        <i class="bi bi-quote quote-icon-left"></i>
-                                        <span>Export tempor illum tamen malis malis eram quae irure esse labore quem
-                                            cillum quid cillum eram malis quorum velit fore eram velit sunt aliqua
-                                            noster fugiat irure amet legam anim culpa.</span>
-                                        <i class="bi bi-quote quote-icon-right"></i>
-                                    </p>
-                                </div>
-                            </div>
-                        </div><!-- Fin del Testimonio -->
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-wrap">
-                                <div class="testimonial-item">
-                                    <img src="bienvenida/assets/img/testimonials/testimonials-3.jpg" class="testimonial-img"
-                                        alt="">
-                                    <h3>Jena Karlis</h3>
-                                    <h4>Dueña de Tienda</h4>
-                                    <div class="stars">
-                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i>
-                                    </div>
-                                    <p>
-                                        <i class="bi bi-quote quote-icon-left"></i>
-                                        <span>Enim nisi quem export duis labore cillum quae magna enim sint quorum nulla
-                                            quem veniam duis minim tempor labore quem eram duis noster aute amet eram
-                                            fore quis sint minim.</span>
-                                        <i class="bi bi-quote quote-icon-right"></i>
-                                    </p>
-                                </div>
-                            </div>
-                        </div><!-- Fin del Testimonio -->
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-wrap">
-                                <div class="testimonial-item">
-                                    <img src="bienvenida/assets/img/testimonials/testimonials-4.jpg" class="testimonial-img"
-                                        alt="">
-                                    <h3>Matt Brandon</h3>
-                                    <h4>Freelancer</h4>
-                                    <div class="stars">
-                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i>
-                                    </div>
-                                    <p>
-                                        <i class="bi bi-quote quote-icon-left"></i>
-                                        <span>Fugiat enim eram quae cillum dolore dolor amet nulla culpa multos export
-                                            minim fugiat minim velit minim dolor enim duis veniam ipsum anim magna sunt
-                                            elit fore quem dolore labore illum veniam.</span>
-                                        <i class="bi bi-quote quote-icon-right"></i>
-                                    </p>
-                                </div>
-                            </div>
-                        </div><!-- Fin del Testimonio -->
-
-                        <div class="swiper-slide">
-                            <div class="testimonial-wrap">
-                                <div class="testimonial-item">
-                                    <img src="bienvenida/assets/img/testimonials/testimonials-5.jpg" class="testimonial-img"
-                                        alt="">
-                                    <h3>John Larson</h3>
-                                    <h4>Emprendedor</h4>
-                                    <div class="stars">
-                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i
-                                            class="bi bi-star-fill"></i>
-                                    </div>
-                                    <p>
-                                        <i class="bi bi-quote quote-icon-left"></i>
-                                        <span>Quis quorum aliqua sint quem legam fore sunt eram irure aliqua veniam
-                                            tempor noster veniam enim culpa labore duis sunt culpa nulla illum cillum
-                                            fugiat legam esse veniam culpa fore nisi cillum quid.</span>
-                                        <i class="bi bi-quote quote-icon-right"></i>
-                                    </p>
-                                </div>
-                            </div>
-                        </div><!-- Fin del Testimonio -->
-
-                    </div>
-                    <div class="swiper-pagination"></div>
-                </div>
-
-            </div>
-
-        </section><!-- /Sección de Testimonios -->
-
-
-        <!-- Sección de Llamado a la Acción -->
-        <section id="call-to-action" class="call-to-action section dark-background">
-
-            <img src="bienvenida/assets/img/cta-bg.jpg" alt="">
-
-            <div class="container">
-                <div class="row justify-content-center" data-aos="zoom-in" data-aos-delay="100">
-                    <div class="col-xl-10">
-                        <div class="text-center">
-                            <h3>Llamado a la Acción</h3>
-                            <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat
-                                nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui
-                                officia deserunt mollit anim id est laborum.</p>
-                            <a class="cta-btn" href="#">Llamado a la Acción</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </section><!-- /Sección de Llamado a la Acción -->
-
-
-        <!-- Sección de equipo -->
-        <section id="team" class="team section">
-
-            <!-- Título de la sección -->
-            <div class="container section-title" data-aos="fade-up">
-                <h2>Equipo</h2>
-                <div><span>Conoce a nuestro</span> <span class="description-title">Equipo</span></div>
-            </div><!-- Fin del título de la sección -->
-
-            <div class="container">
-
-                <div class="row gy-4">
-
-                    <div class="col-xl-3 col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
-                        <div class="member">
-                            <img src="bienvenida/assets/img/team/team-1.jpg" class="img-fluid" alt="">
-                            <div class="member-info">
-                                <div class="member-info-content">
-                                    <h4>Walter White</h4>
-                                    <span>Director Ejecutivo</span>
-                                </div>
-                                <div class="social">
-                                    <a href=""><i class="bi bi-twitter-x"></i></a>
-                                    <a href=""><i class="bi bi-facebook"></i></a>
-                                    <a href=""><i class="bi bi-instagram"></i></a>
-                                    <a href=""><i class="bi bi-linkedin"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- Fin del miembro del equipo -->
-
-                    <div class="col-xl-3 col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-                        <div class="member">
-                            <img src="bienvenida/assets/img/team/team-2.jpg" class="img-fluid" alt="">
-                            <div class="member-info">
-                                <div class="member-info-content">
-                                    <h4>Sarah Jhonson</h4>
-                                    <span>Gerente de Producto</span>
-                                </div>
-                                <div class="social">
-                                    <a href=""><i class="bi bi-twitter-x"></i></a>
-                                    <a href=""><i class="bi bi-facebook"></i></a>
-                                    <a href=""><i class="bi bi-instagram"></i></a>
-                                    <a href=""><i class="bi bi-linkedin"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- Fin del miembro del equipo -->
-
-                    <div class="col-xl-3 col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
-                        <div class="member">
-                            <img src="bienvenida/assets/img/team/team-3.jpg" class="img-fluid" alt="">
-                            <div class="member-info">
-                                <div class="member-info-content">
-                                    <h4>William Anderson</h4>
-                                    <span>Director de Tecnología</span>
-                                </div>
-                                <div class="social">
-                                    <a href=""><i class="bi bi-twitter-x"></i></a>
-                                    <a href=""><i class="bi bi-facebook"></i></a>
-                                    <a href=""><i class="bi bi-instagram"></i></a>
-                                    <a href=""><i class="bi bi-linkedin"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- Fin del miembro del equipo -->
-
-                    <div class="col-xl-3 col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
-                        <div class="member">
-                            <img src="bienvenida/assets/img/team/team-4.jpg" class="img-fluid" alt="">
-                            <div class="member-info">
-                                <div class="member-info-content">
-                                    <h4>Amanda Jepson</h4>
-                                    <span>Contadora</span>
-                                </div>
-                                <div class="social">
-                                    <a href=""><i class="bi bi-twitter-x"></i></a>
-                                    <a href=""><i class="bi bi-facebook"></i></a>
-                                    <a href=""><i class="bi bi-instagram"></i></a>
-                                    <a href=""><i class="bi bi-linkedin"></i></a>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- Fin del miembro del equipo -->
-
-                </div>
-
-            </div>
-
-        </section><!-- /Sección de equipo -->
-
-
-        <!-- Seccion de contacto -->
+        <!-- Sección de contacto -->
         <section id="contact" class="contact section light-background">
-
-            <!-- Título de la sección -->
+            <!-- Título -->
             <div class="container section-title" data-aos="fade-up">
                 <h2>Contacto</h2>
                 <div><span>¿Necesitas ayuda?</span> <span class="description-title">Contáctanos</span></div>
-            </div><!-- Fin del título de la sección -->
-
-            <div class="container" data-aos="fade-up" data-aos-delay="100">
-
-                <div class="row gy-4">
-                    <div class="col-lg-6 ">
-                        <div class="row gy-4">
-
-                            <div class="col-lg-12">
-                                <div class="info-item d-flex flex-column justify-content-center align-items-center"
-                                    data-aos="fade-up" data-aos-delay="200">
-                                    <i class="bi bi-geo-alt"></i>
-                                    <h3>Dirección</h3>
-                                    <p>A108 Calle Adam, Nueva York, NY 535022</p>
-                                </div>
-                            </div><!-- Fin del elemento de información -->
-
-                            <div class="col-md-6">
-                                <div class="info-item d-flex flex-column justify-content-center align-items-center"
-                                    data-aos="fade-up" data-aos-delay="300">
-                                    <i class="bi bi-telephone"></i>
-                                    <h3>Llámanos</h3>
-                                    <p>+1 5589 55488 55</p>
-                                </div>
-                            </div><!-- Fin del elemento de información -->
-
-                            <div class="col-md-6">
-                                <div class="info-item d-flex flex-column justify-content-center align-items-center"
-                                    data-aos="fade-up" data-aos-delay="400">
-                                    <i class="bi bi-envelope"></i>
-                                    <h3>Envíanos un correo</h3>
-                                    <p>info@example.com</p>
-                                </div>
-                            </div><!-- Fin del elemento de información -->
-
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <form action="forms/contact.php" method="post" class="php-email-form" data-aos="fade-up"
-                            data-aos-delay="500">
-                            <div class="row gy-4">
-
-                                <div class="col-md-6">
-                                    <input type="text" name="name" class="form-control" placeholder="Tu Nombre"
-                                        required="">
-                                </div>
-
-                                <div class="col-md-6 ">
-                                    <input type="email" class="form-control" name="email"
-                                        placeholder="Tu Correo Electrónico" required="">
-                                </div>
-
-                                <div class="col-md-12">
-                                    <input type="text" class="form-control" name="subject" placeholder="Asunto"
-                                        required="">
-                                </div>
-
-                                <div class="col-md-12">
-                                    <textarea class="form-control" name="message" rows="4" placeholder="Mensaje"
-                                        required=""></textarea>
-                                </div>
-
-                                <div class="col-md-12 text-center">
-                                    <div class="loading">Cargando</div>
-                                    <div class="error-message"></div>
-                                    <div class="sent-message">Tu mensaje ha sido enviado. ¡Gracias!</div>
-
-                                    <button type="submit">Enviar Mensaje</button>
-                                </div>
-
-                            </div>
-                        </form>
-                    </div><!-- Fin del formulario de contacto -->
-
-                </div>
-
             </div>
 
-        </section><!-- /Sección de contacto -->
+            <div class="container" data-aos="fade-up" data-aos-delay="100">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+
+                        <div class="row gy-4 text-center">
+
+                            <!-- Dirección -->
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="200">
+                                <div class="info-item d-flex flex-column align-items-center">
+                                    <i class="bi bi-geo-alt" style="font-size:2rem; color:#FF6600;"></i>
+                                    <h3>Dirección</h3>
+                                    <p>C/ Jorge Carrasco entre Z y 3 N° 46 · El Alto</p>
+                                </div>
+                            </div>
+
+                            <!-- Horarios -->
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="240">
+                                <div class="info-item d-flex flex-column align-items-center">
+                                    <i class="bi bi-clock-history" style="font-size:2rem; color:#FF6600;"></i>
+                                    <h3>Horarios</h3>
+                                    <p>L–S 06:00–22:00 · Domingo 08:00–14:00</p>
+                                </div>
+                            </div>
+
+                            <!-- Teléfono / WhatsApp -->
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="280">
+                                <div class="info-item d-flex flex-column align-items-center">
+                                    <i class="bi bi-telephone" style="font-size:2rem; color:#FF6600;"></i>
+                                    <h3>Teléfono / WhatsApp</h3>
+                                    <p>
+                                        <a href="tel:+5917XXXXXXXX">+591 7XX XX XXX</a><br>
+                                        <a href="https://wa.me/5917XXXXXXXX" target="_blank" rel="noopener">Escríbenos
+                                            por WhatsApp</a>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Correo -->
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="320">
+                                <div class="info-item d-flex flex-column align-items-center">
+                                    <i class="bi bi-envelope" style="font-size:2rem; color:#FF6600;"></i>
+                                    <h3>Correo</h3>
+                                    <p><a href="mailto:contacto@maxpowergym.bo">contacto@maxpowergym.bo</a></p>
+                                </div>
+                            </div>
+
+                            <!-- QR opcional (centrado) -->
+                            <div class="col-12" data-aos="fade-up" data-aos-delay="360">
+                                <img src="bienvenida/assets/img/qr/whatsapp.png" alt="QR WhatsApp Max Power Gym"
+                                    onerror="this.style.display='none'"
+                                    style="max-width:240px; width:100%; border-radius:12px; border:1px solid rgba(0,0,0,.06);">
+                                <div style="opacity:.75; margin-top:.5rem;">Escanéa el QR para escribirnos directo por
+                                    WhatsApp.</div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+
 
     </main>
 
@@ -797,7 +522,8 @@
         </div>
 
         <div class="container copyright text-center mt-4">
-            <p>© <span>Derechos de autor</span> <strong class="px-1 sitename">Max Power Gym</strong> <span>Todos los derechos
+            <p>© <span>Derechos de autor</span> <strong class="px-1 sitename">Max Power Gym</strong> <span>Todos los
+                    derechos
                     reservados</span>
             </p>
             <div class="credits">

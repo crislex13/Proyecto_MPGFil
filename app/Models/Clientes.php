@@ -8,9 +8,11 @@ use Illuminate\Notifications\Notifiable;
 use Carbon\Carbon;
 use App\Models\Asistencia;
 use App\Models\SesionAdicional;
+use App\Traits\HasAuditoria;
 
 class Clientes extends Model
 {
+    use HasAuditoria;
     use Notifiable;
 
     protected $fillable = [

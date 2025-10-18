@@ -71,12 +71,12 @@ class ConfiguracionResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_configuracion');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_configuracion');
+        return false;
     }
 
 

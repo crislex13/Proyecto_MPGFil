@@ -18,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Forms\Set;
 use App\Models\Clientes;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Placeholder;
 
 
 
@@ -76,12 +77,12 @@ class CasilleroResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_casillero');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_casillero');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -96,10 +97,17 @@ class CasilleroResource extends Resource
                     ->nullable(),
 
                 TextInput::make('numero')
+                    ->label('Número de casillero')
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->placeholder('Ej: C-001')
-                    ->label('Número de casillero'),
+                    ->helperText('Este número debe ser único. Ej: C-001, C-002, etc.')
+                    ->validationMessages([
+                        'required' => 'El número del casillero es obligatorio.',
+                        'unique' => 'Este número de casillero ya está registrado.',
+                        'max' => 'El número del casillero es demasiado largo.',
+                        'regex' => 'El formato del número debe ser válido (Ej: C-001).',
+                    ]),
 
                 Select::make('estado')
                     ->label('Estado')
@@ -114,10 +122,17 @@ class CasilleroResource extends Resource
                 TextInput::make('costo_mensual')
                     ->label('Costo mensual (Bs.)')
                     ->numeric()
+                    ->minValue(1)
+                    ->maxValue(100)
                     ->default(40)
-                    ->disabled()
+                    ->disabled(fn() => !auth()->user()?->hasRole('admin'))
                     ->dehydrated()
-                    ->placeholder('Costo fijo por 30 días'),
+                    ->helperText('Debe estar entre 1 y 100 Bs.')
+                    ->placeholder('Costo fijo por 30 días')
+                    ->validationMessages([
+                        'min' => 'El monto debe ser mayor o igual a 1 Bs.',
+                        'max' => 'El monto no puede superar los 100 Bs.',
+                    ]),
 
                 TextInput::make('total_reposiciones')
                     ->label('Reposiciones realizadas')
@@ -144,7 +159,13 @@ class CasilleroResource extends Resource
                 DatePicker::make('fecha_entrega_llave')
                     ->label('Fecha de inicio de uso')
                     ->required()
+                    ->minDate(Carbon::createFromDate(2020, 1, 1))
+                    ->maxDate(now())
                     ->reactive()
+                    ->extraAttributes([
+                        'id' => 'fecha_inicio_input',
+                        'onkeydown' => 'event.preventDefault();',
+                    ])
                     ->afterStateUpdated(function ($state, Set $set) {
                         if ($state) {
                             $fechaFinal = Carbon::parse($state)->addDays(29);
@@ -156,8 +177,24 @@ class CasilleroResource extends Resource
                 DatePicker::make('fecha_final_llave')
                     ->label('Fecha de vencimiento')
                     ->disabled()
-                    ->dehydrated()
+                    ->dehydrated(true)
                     ->placeholder('Se calculará automáticamente'),
+
+            Section::make('Control de cambios')
+                    ->icon('heroicon-o-user-circle')
+                    ->collapsible()
+                    ->columns(1)
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->schema([
+                        Placeholder::make('registrado_por')
+                            ->label('Registrado por')
+                            ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                        Placeholder::make('modificado_por')
+                            ->label('Modificado por')
+                            ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                    ]),
+
             ])->columns(2)
                 ->description('Complete los datos del alquiler de casillero')
                 ->collapsible()
@@ -188,7 +225,7 @@ class CasilleroResource extends Resource
                                 ->orWhere('apellido_materno', 'like', "%$search%");
                         });
                     })
-                    ->sortable(),
+                    ->getStateUsing(fn($record) => optional($record->cliente)?->nombre . ' ' . optional($record->cliente)?->apellido_paterno . ' ' . optional($record->cliente)?->apellido_materno),
 
                 TextColumn::make('numero')
                     ->label('N° Casillero')
@@ -214,11 +251,12 @@ class CasilleroResource extends Resource
                     ->label('Costo mensual')
                     ->icon('heroicon-o-banknotes')
                     ->money('BOB')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
 
                 TextColumn::make('total_reposiciones')
                     ->label('Reposiciones')
-                    ->icon('heroicon-o-arrow-path') // reemplazo válido de "refresh"
+                    ->icon('heroicon-o-arrow-path')
                     ->sortable(),
 
                 TextColumn::make('monto_reposiciones')
@@ -246,12 +284,27 @@ class CasilleroResource extends Resource
                         if (!$record->fecha_final_llave)
                             return '—';
 
-                        $dias = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($record->fecha_final_llave), false);
+                        $dias = Carbon::now()->diffInDays(Carbon::parse($record->fecha_final_llave), false);
                         return $dias < 0
                             ? "Venció hace " . abs(intval($dias)) . " días"
                             : intval($dias) . ' días';
                     })
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('cliente_id')

@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\HasAuditoria;
 
 class Casillero extends Model
 {
+    use HasAuditoria;
     protected $fillable = [
         'numero',
         'estado',
@@ -17,6 +19,8 @@ class Casillero extends Model
         'costo_mensual',
         'total_reposiciones',
         'monto_reposiciones',
+        'registrado_por',
+        'modificado_por',
     ];
 
     public function cliente(): BelongsTo
@@ -32,4 +36,6 @@ class Casillero extends Model
 
         return "{$this->cliente->nombre} {$this->cliente->apellido_paterno} {$this->cliente->apellido_materno}";
     }
+
+
 }

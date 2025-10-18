@@ -21,6 +21,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('bloquear:planes-deuda')->dailyAt('06:00');
         $schedule->command('clientes:desbloquear-si-pagaron')->dailyAt('07:10');
         $schedule->command('app:procesar-asistencias-biometrico')->everyMinute();
+        $schedule->command('asistencias:registrar-permisos')->dailyAt('23:55');
         $schedule->command('asistencias:registrar-faltas')->dailyAt('23:59');
         $schedule->command('clientes:registrar-faltas')->dailyAt('23:59');
         $schedule->command('sesiones:registrar-faltas')->dailyAt('23:59');

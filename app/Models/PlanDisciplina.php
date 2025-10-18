@@ -5,15 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Validation\ValidationException;
+use App\Traits\HasAuditoria;
 
 class PlanDisciplina extends Model
 {
+    use HasAuditoria;
     protected $table = 'plan_disciplinas';
 
     protected $fillable = [
         'plan_id',
         'disciplina_id',
         'precio',
+        'registrado_por',
+        'modificado_por',
     ];
 
     public function plan(): BelongsTo
@@ -42,5 +46,15 @@ class PlanDisciplina extends Model
                 ]);
             }
         });
+    }
+
+    public function registradoPor()
+    {
+        return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    public function modificadoPor()
+    {
+        return $this->belongsTo(User::class, 'modificado_por');
     }
 }

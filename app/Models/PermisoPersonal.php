@@ -6,9 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Personal;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\HasAuditoria;
 
 class PermisoPersonal extends Model
 {
+    use HasAuditoria;
     protected $table = 'permisos_personal';
 
     protected $fillable = [
@@ -19,6 +21,8 @@ class PermisoPersonal extends Model
         'motivo',
         'estado',
         'autorizado_por',
+        'registrado_por',
+        'modificado_por',
     ];
 
     protected $casts = [

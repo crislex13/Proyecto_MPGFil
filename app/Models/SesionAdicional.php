@@ -2,10 +2,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\HasAuditoria;
 
 class SesionAdicional extends Model
 {
+    use HasAuditoria;
     protected $table = 'sesiones_adicionales';
     protected $fillable = [
         'cliente_id',
@@ -17,6 +18,8 @@ class SesionAdicional extends Model
         'tipo_sesion',
         'precio',
         'fecha',
+        'registrado_por',
+        'modificado_por',
     ];
 
     protected static function booted()

@@ -3,34 +3,23 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PlanClienteResource\Pages;
-use App\Filament\Resources\PlanClienteResource\RelationManagers;
 use App\Models\PlanCliente;
 use App\Models\PlanDisciplina;
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Carbon\Carbon;
 use App\Models\Clientes;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Placeholder;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\HtmlString;
 use App\Filament\Resources\PlanClienteResource\RelationManagers\SesionesAdicionalesRelationManager;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Get;
 
 
 class PlanClienteResource extends Resource
@@ -89,12 +78,12 @@ class PlanClienteResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_plan::cliente');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_plan::cliente');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -121,14 +110,12 @@ class PlanClienteResource extends Resource
 
             $duracion = $plan->duracion_dias ?? 0;
 
-            // Si se seleccionaron los 7 días, usamos días corridos
             if (count($diasPermitidos) === 7) {
                 $fechaFinal = $fechaInicio->copy()->addDays($duracion - 1);
                 $set('fecha_final', $fechaFinal->toDateString());
                 return;
             }
 
-            // Si hay días permitidos pero no son 7
             if (!empty($diasPermitidos)) {
                 $diasPermitidosIndices = collect($diasPermitidos)->map(function ($dia) {
                     return match ($dia) {
@@ -170,7 +157,6 @@ class PlanClienteResource extends Resource
                 return;
             }
 
-            // Si no se seleccionó nada, asumimos días corridos
             $fechaFinal = $fechaInicio->copy()->addDays($duracion - 1);
             $set('fecha_final', $fechaFinal->toDateString());
         };
@@ -293,10 +279,12 @@ class PlanClienteResource extends Resource
                     DatePicker::make('fecha_inicio')
                         ->label('Fecha inicio')
                         ->required()
+                        ->maxDate(now())
+                        ->minDate(Carbon::createFromDate(2020, 1, 1))
                         ->reactive()
                         ->extraAttributes([
                             'id' => 'fecha_inicio_input',
-                            'onkeydown' => 'event.preventDefault();', // bloquea el tipeo manual
+                            'onkeydown' => 'event.preventDefault();',
                         ])
                         ->afterStateUpdated(function ($state, callable $set, callable $get) use ($calcularFechaFinal) {
                             try {
@@ -314,7 +302,7 @@ class PlanClienteResource extends Resource
                                     return;
                                 }
 
-                                $calcularFechaFinal($get, $set); // solo si todo está correcto
+                                $calcularFechaFinal($get, $set);
                             } catch (\Exception $e) {
                                 Notification::make()
                                     ->title('⚠️ Fecha inválida')
@@ -345,7 +333,8 @@ class PlanClienteResource extends Resource
                         ->default(0)
                         ->afterStateUpdated(function ($state, callable $set, callable $get) use ($actualizarMontos) {
                             $actualizarMontos($get, $set);
-                        }),
+                        })
+                        ->disabled(),
 
                     TextInput::make('a_cuenta')
                         ->label('A cuenta')
@@ -368,7 +357,7 @@ class PlanClienteResource extends Resource
                                     ->danger()
                                     ->send();
 
-                                $set('a_cuenta', $precio); // corrige el valor automáticamente al máximo permitido
+                                $set('a_cuenta', $precio);
                             }
 
                             $actualizarMontos($get, $set);
@@ -377,11 +366,13 @@ class PlanClienteResource extends Resource
 
                     TextInput::make('total')
                         ->label('Total')
-                        ->readOnly(),
+                        ->readOnly()
+                        ->disabled(),
 
                     TextInput::make('saldo')
                         ->label('Saldo')
-                        ->readOnly(),
+                        ->readOnly()
+                        ->disabled(),
 
                     Select::make('estado')
                         ->label('Estado del plan')
@@ -501,14 +492,16 @@ class PlanClienteResource extends Resource
                     ->icon('heroicon-o-currency-dollar')
                     ->money('BOB')
                     ->alignRight()
-                    ->color(fn($state) => $state > 0 ? 'success' : null),
+                    ->color(fn($state) => $state > 0 ? 'success' : null)
+                    ->toggleable(isToggledHiddenByDefault: false),
 
                 TextColumn::make('saldo')
                     ->label('Saldo')
                     ->icon('heroicon-o-exclamation-circle')
                     ->money('BOB')
                     ->alignRight()
-                    ->color(fn($state) => $state > 0 ? 'danger' : null),
+                    ->color(fn($state) => $state > 0 ? 'danger' : null)
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('cliente_id')

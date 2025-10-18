@@ -16,6 +16,7 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\CreateAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Carbon\Carbon;
 
 class SesionesAdicionalesRelationManager extends RelationManager
 {
@@ -79,14 +80,28 @@ class SesionesAdicionalesRelationManager extends RelationManager
 
                     DatePicker::make('fecha')
                         ->required()
-                        ->label('Fecha de la sesión'),
+                        ->label('Fecha de la sesión')
+                        ->minDate(Carbon::create(2020, 1, 1))
+                        ->maxDate(now())
+                        ->validationMessages([
+                            'required' => 'La fecha es obligatoria.',
+                            'before_or_equal' => 'No puede ser una fecha futura.',
+                            'after_or_equal' => 'No puede ser anterior a 2020.',
+                        ]),
 
                     TextInput::make('precio')
                         ->label('Precio (Bs.)')
                         ->numeric()
                         ->required()
                         ->minValue(1)
-                        ->placeholder('Ej: 50.00 Bs'),
+                        ->maxValue(1000)
+                        ->placeholder('Ej: 50.00 Bs')
+                        ->validationMessages([
+                            'required' => 'El precio es obligatorio.',
+                            'numeric' => 'Debe ser un número válido.',
+                            'min' => 'El precio mínimo es 1 Bs.',
+                            'max' => 'El precio no puede exceder los 1000 Bs.',
+                        ]),
                 ])
                 ->columns(2),
         ]);

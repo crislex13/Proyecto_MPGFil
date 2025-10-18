@@ -73,12 +73,12 @@ class PermisoPersonalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_permiso::personal');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_permiso::personal');
+        return false;
     }
     public static function form(Forms\Form $form): Forms\Form
     {

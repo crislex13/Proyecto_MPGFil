@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use App\Models\CategoriaProducto;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\HasAuditoria;
 
 class Productos extends Model
 {
+    use HasAuditoria;
     protected $table = 'productos';
 
     protected $fillable = [
@@ -22,8 +24,10 @@ class Productos extends Model
         'stock_paquetes',
         'categoria_id',
         'imagen',
+        'es_perecedero',
         'registrado_por',
         'modificado_por',
+        'activo',
     ];
 
     public function categoria(): BelongsTo
@@ -55,17 +59,29 @@ class Productos extends Model
         return $this->belongsTo(User::class, 'modificado_por');
     }
 
-    protected static function boot()
+    public function lotes()
     {
-        parent::boot();
+        return $this->hasMany(LoteProducto::class, 'producto_id');
+    }
 
-        static::creating(function ($producto) {
-            $producto->registrado_por = Auth::id();
-        });
+    public function detallesVenta()
+    {
+        return $this->hasMany(\App\Models\DetalleVentaProducto::class, 'producto_id');
+    }
 
-        static::updating(function ($producto) {
-            $producto->modificado_por = Auth::id();
-        });
+    public function scopeActivos($query)
+    {
+        return $query->where('activo', true);
+    }
+
+    public function getStockUnidadesAttribute(): int
+    {
+        return $this->lotes()->sum('stock_unidades');
+    }
+
+    public function getStockPaquetesAttribute(): int
+    {
+        return $this->lotes()->sum('stock_paquetes');
     }
 
 }

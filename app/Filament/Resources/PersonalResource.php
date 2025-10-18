@@ -19,10 +19,12 @@ use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
 use Filament\Forms\Components\Placeholder;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Spatie\Permission\Models\Role;
 use Filament\Tables\Actions\Action;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
+use App\Filament\Resources\PersonalResource\RelationManagers\PagosRelationManager;
+
 
 class PersonalResource extends Resource
 {
@@ -80,12 +82,12 @@ class PersonalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_personal');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_personal');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -98,33 +100,43 @@ class PersonalResource extends Resource
                     TextInput::make('nombre')
                         ->required()
                         ->label('Nombre')
-                        ->placeholder('Ej: Carlos')
+                        ->placeholder('Nombre del personal')
                         ->helperText('Se usará para generar el usuario del sistema.'),
 
                     TextInput::make('apellido_paterno')
                         ->required()
                         ->label('Apellido Paterno')
-                        ->placeholder('Ej: Pérez'),
+                        ->placeholder('Apellido paterno'),
 
                     TextInput::make('apellido_materno')
-                        ->required()
                         ->label('Apellido Materno')
-                        ->placeholder('Ej: Gutiérrez'),
+                        ->placeholder('Apellido materno'),
 
                     DatePicker::make('fecha_de_nacimiento')
                         ->required()
                         ->label('Fecha de nacimiento')
+                        ->maxDate(now()->subYears(5))
+                        ->minDate(Carbon::createFromDate(1900, 1, 1))
                         ->placeholder('Seleccionar fecha')
                         ->helperText('Se utilizará como contraseña inicial del usuario.'),
 
                     TextInput::make('ci')
                         ->label('C.I.')
                         ->required()
-                        ->unique(ignoreRecord: true)
+                        ->unique(ignoreRecord: true, table: 'personals', column: 'ci')
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn(Get $get, Set $set, $state) => $set('biometrico_id', $state))
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            if ($state) {
+                                $set('biometrico_id', $state);
+                            }
+                        })
                         ->placeholder('Carnet de identidad')
-                        ->helperText('Identificador único del personal.'),
+                        ->helperText('Este valor se usará como identificador único del usuario.')
+                        ->validationMessages([
+                            'required' => 'El C.I. es obligatorio.',
+                            'regex' => 'El C.I. debe tener entre 5 y 12 dígitos numéricos.',
+                            'unique' => 'Ya existe un personal con ese número de C.I.',
+                        ]),
 
                     TextInput::make('telefono')
                         ->label('Teléfono (WhatsApp)')
@@ -145,25 +157,40 @@ class PersonalResource extends Resource
                             if (preg_match('/^\d{8}$/', $state)) {
                                 $set('telefono', '+591' . $state);
                             }
-                        }),
+                        })
+                        ->validationMessages([
+                            'required' => 'El número de teléfono es obligatorio.',
+                            'regex' => 'El teléfono debe comenzar con +591 y tener 8 dígitos después.',
+                            'unique' => 'Este número de WhatsApp ya está registrado.',
+                        ]),
 
                     TextInput::make('direccion')
                         ->label('Dirección')
                         ->placeholder('Ej: Av. América Oeste'),
 
                     TextInput::make('correo')
+                        ->label('Correo electrónico')
                         ->email()
-                        ->required()
-                        ->unique(ignoreRecord: true)
-                        ->label('Correo')
-                        ->placeholder('correo@ejemplo.com'),
+                        ->nullable()
+                        ->placeholder('ejemplo@correo.com')
+                        ->rules(fn($record) => [
+                            'nullable',
+                            'email:rfc',
+                            Rule::unique('clientes', 'correo')->ignore($record?->id),
+                        ])
+                        ->validationMessages([
+                            'email' => 'Debes ingresar un correo electrónico válido.',
+                            'unique' => 'Este correo ya está registrado en otro personal.',
+                        ]),
 
                     FileUpload::make('foto')
                         ->label('Foto del personal')
                         ->image()
                         ->directory('fotos/personal')
                         ->disk('public')
+                        ->previewable()
                         ->imageEditor()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
                         ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName()))
                         ->previewable(),
 
@@ -175,11 +202,12 @@ class PersonalResource extends Resource
                     Select::make('cargo')
                         ->label('Cargo')
                         ->options(
-                            Role::whereIn('name', ['recepcionista', 'instructor'])
+                            Role::whereIn('name', ['recepcionista', 'instructor', 'supervisor'])
                                 ->pluck('name', 'name')
                         )
                         ->searchable()
                         ->required()
+                        ->rules(['required'])
                         ->helperText('Este campo también define el rol del usuario generado.'),
 
                     TextInput::make('biometrico_id')
@@ -191,7 +219,15 @@ class PersonalResource extends Resource
 
                     DatePicker::make('fecha_contratacion')
                         ->required()
-                        ->label('Fecha de contratación'),
+                        ->label('Fecha de contratación')
+                        ->minDate(Carbon::create(2020, 1, 1))
+                        ->maxDate(now())
+                        ->helperText('La fecha debe estar entre enero de 2020 y hoy.')
+                        ->validationMessages([
+                            'required' => 'La fecha de contratación es obligatoria.',
+                            'before_or_equal' => 'La fecha no puede ser futura.',
+                            'after_or_equal' => 'La fecha no puede ser anterior a 2025.',
+                        ]),
 
                     Select::make('estado')
                         ->label('Estado')
@@ -302,13 +338,17 @@ class PersonalResource extends Resource
                     ->label('Registrado por')
                     ->icon('heroicon-o-user-plus')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
 
                 TextColumn::make('modificadoPor.name')
                     ->label('Modificado por')
                     ->icon('heroicon-o-pencil-square')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('cargo')
@@ -473,7 +513,7 @@ class PersonalResource extends Resource
                                     ->content(
                                         fn($record) =>
                                         optional($record->fecha_de_nacimiento)
-                                        ? \Carbon\Carbon::parse($record->fecha_de_nacimiento)->format('d-m-Y')
+                                        ? Carbon::parse($record->fecha_de_nacimiento)->format('d-m-Y')
                                         : 'No disponible'
                                     ),
                             ]),
@@ -483,7 +523,8 @@ class PersonalResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
                     ->url(fn($record) => route('reporte.personal.ficha', ['id' => $record->id]))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
 
                 Action::make('reporteMensual')
                     ->label('Ficha Mensual')
@@ -491,14 +532,17 @@ class PersonalResource extends Resource
                     ->color('success')
                     ->url(fn($record) => route('personal.reporte.mensual', ['id' => $record->id]))
                     ->openUrlInNewTab()
-                //->visible(fn() => auth()->user()->can('ver_ficha_personal')),
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
 
             ]);
     }
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            PagosRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

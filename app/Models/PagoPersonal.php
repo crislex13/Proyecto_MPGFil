@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\HasAuditoria;
 
 class PagoPersonal extends Model
 {
+    use HasAuditoria;
     protected $table = 'pagos_personal';
     protected $fillable = [
         'personal_id',
@@ -15,6 +17,8 @@ class PagoPersonal extends Model
         'turno_id',
         'sala_id',
         'pagado',
+        'registrado_por',
+        'modificado_por',
     ];
 
     public function personal()
@@ -31,5 +35,16 @@ class PagoPersonal extends Model
     {
         return $this->belongsTo(Sala::class);
     }
+
+    public function registradoPor()
+    {
+        return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    public function modificadoPor()
+    {
+        return $this->belongsTo(User::class, 'modificado_por');
+    }
+
 
 }

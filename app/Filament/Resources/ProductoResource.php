@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductoResource\Pages;
+use App\Filament\Resources\ProductosResource\RelationManagers\LotesProductoRelationManager;
 use App\Models\Productos;
 use App\Models\CategoriaProducto;
 use Filament\Forms\Form;
@@ -20,6 +21,7 @@ use Filament\Tables;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Hidden;
 use Filament\Tables\Actions\Action;
+use Filament\Forms\Components\Toggle;
 
 class ProductoResource extends Resource
 {
@@ -77,12 +79,12 @@ class ProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_producto');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_producto');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -105,14 +107,14 @@ class ProductoResource extends Resource
                         ->placeholder('Seleccione una categoría'),
 
                     TextInput::make('precio_unitario')
-                        ->label('Precio unitario (Bs.)')
+                        ->label('Precio de venta unitario (Bs.)')
                         ->numeric()
                         ->minValue(0)
                         ->placeholder('Ej: 6.50')
                         ->required(),
 
                     TextInput::make('precio_paquete')
-                        ->label('Precio por paquete (Bs.)')
+                        ->label('Precio de venta por paquete (Bs.)')
                         ->numeric()
                         ->minValue(0)
                         ->placeholder('Ej: 65.00'),
@@ -123,21 +125,13 @@ class ProductoResource extends Resource
                         ->minValue(1)
                         ->placeholder('Ej: 12'),
 
-                    TextInput::make('stock_unidades')
-                        ->label('Stock en unidades')
-                        ->numeric()
-                        ->default(0)
-                        ->minValue(0)
-                        ->required()
-                        ->disabled(fn(string $context) => $context === 'edit'),
-
-                    TextInput::make('stock_paquetes')
-                        ->label('Stock en paquetes')
-                        ->numeric()
-                        ->default(0)
-                        ->minValue(0)
-                        ->required()
-                        ->disabled(fn(string $context) => $context === 'edit'),
+                    Toggle::make('es_perecedero')
+                        ->label('¿Es perecedero?')
+                        ->helperText('Activa esta opción si el producto tiene fecha de vencimiento')
+                        ->default(false)
+                        ->inline(false)
+                        ->columnSpanFull()
+                        ->required(),
 
                     FileUpload::make('imagen')
                         ->label('Imagen del producto')
@@ -188,7 +182,7 @@ class ProductoResource extends Resource
     public static function getRelations(): array
     {
         return [
-            // RelationManagers si se usan en el futuro
+            LotesProductoRelationManager::class,
         ];
     }
 
@@ -235,11 +229,21 @@ class ProductoResource extends Resource
                 TextColumn::make('stock_unidades')
                     ->label('Stock (u)')
                     ->icon('heroicon-o-archive-box')
-                    ->sortable(),
+                    ->sortable(false),
 
                 TextColumn::make('stock_paquetes')
                     ->label('Stock (p)')
                     ->icon('heroicon-o-archive-box-arrow-down')
+                    ->sortable(false),
+
+                TextColumn::make('activo')
+                    ->label('Estado')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state ? 'Activo' : 'Inactivo')
+                    ->colors([
+                        'success' => true,
+                        'danger' => false,
+                    ])
                     ->sortable(),
 
                 TextColumn::make('registradoPor.name')
@@ -286,7 +290,21 @@ class ProductoResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn($record) => $record->detallesVenta->isEmpty()),
+                Tables\Actions\Action::make('desactivar')
+                    ->label('Desactivar')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->action(fn($record) => $record->update(['activo' => false]))
+                    ->visible(fn($record) => $record->activo),
+
+                Tables\Actions\Action::make('activar')
+                    ->label('Activar')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->action(fn($record) => $record->update(['activo' => true]))
+                    ->visible(fn($record) => !$record->activo),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

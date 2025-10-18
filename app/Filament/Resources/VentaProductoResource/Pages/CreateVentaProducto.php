@@ -14,4 +14,9 @@ class CreateVentaProducto extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
+
+    public function getTitle(): string
+    {
+        return 'Registrar venta';
+    }
 }

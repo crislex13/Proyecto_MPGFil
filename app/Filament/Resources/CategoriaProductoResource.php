@@ -14,6 +14,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Forms\Components\Placeholder;
 
 class CategoriaProductoResource extends Resource
 {
@@ -71,12 +72,12 @@ class CategoriaProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_categoria::producto');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_categoria::producto');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -96,6 +97,20 @@ class CategoriaProductoResource extends Resource
                         ->rows(3),
                 ])
                 ->columns(1),
+            Section::make('Control de cambios')
+                ->icon('heroicon-o-user-circle')
+                ->collapsible()
+                ->columns(1)
+                ->visible(fn() => auth()->user()?->hasRole('admin'))
+                ->schema([
+                    Placeholder::make('registrado_por')
+                        ->label('Registrado por')
+                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                    Placeholder::make('modificado_por')
+                        ->label('Modificado por')
+                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                ]),
         ]);
     }
 
@@ -114,6 +129,21 @@ class CategoriaProductoResource extends Resource
                     ->icon('heroicon-o-document-text')
                     ->limit(50)
                     ->tooltip(fn($record) => $record->descripcion),
+                    
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
             ])
             ->filters([
                 SelectFilter::make('nombre')

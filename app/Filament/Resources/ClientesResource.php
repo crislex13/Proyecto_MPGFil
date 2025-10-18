@@ -24,10 +24,10 @@ use Filament\Tables\Columns\{
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\HtmlString;
 use Filament\Tables;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Hidden;
-use Filament\Facades\Filament;
 use App\Models\User;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
+
 
 
 class ClientesResource extends Resource
@@ -86,12 +86,12 @@ class ClientesResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_clientes');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_clientes');
+        return false;
     }
     public static function form(Form $form): Form
     {
@@ -102,19 +102,25 @@ class ClientesResource extends Resource
                 ->schema([
                     TextInput::make('nombre')
                         ->required()
+                        ->label('Nombre(s)')
                         ->placeholder('Nombre del cliente')
                         ->helperText('Este nombre se usará para crear el nombre de usuario del sistema.'),
 
                     TextInput::make('apellido_paterno')
                         ->required()
+                        ->label('Apellido paterno')
                         ->placeholder('Apellido paterno'),
 
                     TextInput::make('apellido_materno')
+                        ->nullable()
+                        ->label('Apellido materno')
                         ->placeholder('Apellido materno'),
 
                     DatePicker::make('fecha_de_nacimiento')
                         ->required()
                         ->label('Fecha de nacimiento')
+                        ->maxDate(now()->subYears(5))
+                        ->minDate(Carbon::createFromDate(1900, 1, 1))
                         ->placeholder('Seleccione una fecha')
                         ->helperText('Se usará como contraseña inicial para el acceso al sistema.'),
 
@@ -129,7 +135,12 @@ class ClientesResource extends Resource
                                 $set('biometrico_id', $state);
                             }
                         })
-                        ->helperText('Este valor se usará como identificador único del usuario.'),
+                        ->helperText('Este valor se usará como identificador único del usuario.')
+                        ->validationMessages([
+                            'required' => 'El C.I. es obligatorio.',
+                            'regex' => 'El C.I. debe tener entre 5 y 12 dígitos numéricos.',
+                            'unique' => 'Ya existe un cliente con ese número de C.I.',
+                        ]),
 
                     TextInput::make('telefono')
                         ->label('Teléfono (WhatsApp)')
@@ -150,12 +161,27 @@ class ClientesResource extends Resource
                             if (preg_match('/^\d{8}$/', $state)) {
                                 $set('telefono', '+591' . $state);
                             }
-                        }),
+                        })
+                        ->validationMessages([
+                            'required' => 'El número de teléfono es obligatorio.',
+                            'regex' => 'El teléfono debe comenzar con +591 y tener 8 dígitos después.',
+                            'unique' => 'Este número de WhatsApp ya está registrado.',
+                        ]),
 
                     TextInput::make('correo')
-                        ->label('Correo')
+                        ->label('Correo electrónico')
                         ->email()
-                        ->placeholder('correo@ejemplo.com'),
+                        ->nullable()
+                        ->placeholder('ejemplo@correo.com')
+                        ->rules(fn($record) => [
+                            'nullable',
+                            'email:rfc',
+                            Rule::unique('clientes', 'correo')->ignore($record?->id),
+                        ])
+                        ->validationMessages([
+                            'email' => 'Debes ingresar un correo electrónico válido.',
+                            'unique' => 'Este correo ya está registrado en otro cliente.',
+                        ]),
 
                     Select::make('sexo')
                         ->label('Sexo')
@@ -172,7 +198,7 @@ class ClientesResource extends Resource
                         ->directory('fotos/clientes')
                         ->previewable()
                         ->imageEditor()
-                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg']) // <- Agrega esto
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
                         ->getUploadedFileNameForStorageUsing(fn($file) => time() . '-' . str_replace(' ', '_', $file->getClientOriginalName())),
 
                     TextInput::make('biometrico_id')
@@ -191,15 +217,15 @@ class ClientesResource extends Resource
                         ->placeholder('Ej: Asma, hipertensión...'),
 
                     TextInput::make('contacto_emergencia_nombre')
-                        ->label('Nombre de emergencia')
+                        ->label('Nombre del contacto de emergencia')
                         ->placeholder('Nombre del contacto'),
 
                     TextInput::make('contacto_emergencia_parentesco')
-                        ->label('Parentesco')
+                        ->label('¿Que parentesco tiene?')
                         ->placeholder('Parentesco con el cliente'),
 
                     TextInput::make('contacto_emergencia_celular')
-                        ->label('Celular del contacto')
+                        ->label('Telefono del contacto')
                         ->placeholder('+59171234567'),
                 ]),
 
@@ -207,15 +233,17 @@ class ClientesResource extends Resource
                 ->icon('heroicon-o-user-circle')
                 ->collapsible()
                 ->columns(1)
+                ->visible(fn() => auth()->user()?->hasRole('admin'))
                 ->schema([
                     Placeholder::make('registrado_por')
                         ->label('Registrado por')
-                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'Aún no registrado'),
+                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
 
                     Placeholder::make('modificado_por')
                         ->label('Modificado por')
-                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin modificaciones'),
+                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
                 ]),
+
         ]);
     }
 
@@ -275,13 +303,17 @@ class ClientesResource extends Resource
                     ->label('Registrado por')
                     ->icon('heroicon-o-user-plus')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
 
                 TextColumn::make('modificadoPor.name')
                     ->label('Modificado por')
                     ->icon('heroicon-o-pencil-square')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('sexo')
@@ -417,7 +449,7 @@ class ClientesResource extends Resource
                                     ->content(
                                         fn($record) =>
                                         optional($record->fecha_de_nacimiento)
-                                        ? \Carbon\Carbon::parse($record->fecha_de_nacimiento)->format('d-m-Y')
+                                        ? Carbon::parse($record->fecha_de_nacimiento)->format('d-m-Y')
                                         : 'No disponible'
                                     ),
                             ]),
@@ -427,7 +459,8 @@ class ClientesResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
                     ->url(fn($record) => route('reporte.cliente.ficha', ['id' => $record->id]))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
 
                 Action::make('reporteMensual')
                     ->label('PDF Mensual')
@@ -435,7 +468,7 @@ class ClientesResource extends Resource
                     ->color('success')
                     ->url(fn($record) => route('clientes.reporte.mensual', $record->id))
                     ->openUrlInNewTab()
-                //->visible(fn() => auth()->user()->can('ver_ficha_cliente')),
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ]);
     }
 

@@ -4,14 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Traits\HasAuditoria;
 
 class CategoriaProducto extends Model
 {
-    protected $table = 'categorias'; 
+    use HasAuditoria;
+    protected $table = 'categorias';
 
     protected $fillable = [
         'nombre',
         'descripcion',
+        'registrado_por',
+        'modificado_por',
     ];
 
     public function productos(): HasMany

@@ -77,12 +77,12 @@ class VentaProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_venta::producto');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_venta::producto');
+        return false;
     }
 
 
@@ -168,13 +168,11 @@ class VentaProductoResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->tooltip('Editar esta venta'),
-                Tables\Actions\DeleteAction::make()
-                    ->tooltip('Eliminar esta venta'),
+                    ->label('Adicionar venta') // Texto personalizado
+                    ->tooltip('Adicionar productos a esta venta')
+                    ->icon('heroicon-o-plus-circle'), // Icono más intuitivo
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ->bulkActions([]);
     }
 
     public static function getPages(): array
@@ -192,4 +190,6 @@ class VentaProductoResource extends Resource
             DetallesRelationManager::class,
         ];
     }
+
+    
 }

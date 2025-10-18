@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
-
+use App\Traits\HasAuditoria;
 
 class Personal extends Model
 {
+    use HasAuditoria;
     protected $table = 'personals';
     protected $fillable = [
         'nombre',

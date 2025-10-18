@@ -5,7 +5,6 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\IngresoProductoResource\Pages;
 use App\Models\IngresoProducto;
 use App\Models\Productos;
-use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
@@ -15,12 +14,10 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Section;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\DateColumn;
-use Illuminate\Support\Facades\Auth;
 use Filament\Tables;
 use Filament\Tables\Columns\ImageColumn;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 
 class IngresoProductoResource extends Resource
 {
@@ -78,12 +75,12 @@ class IngresoProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_ingreso::producto');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_ingreso::producto');
+        return false;
     }
     public static function form(Form $form): Form
     {
@@ -95,55 +92,107 @@ class IngresoProductoResource extends Resource
                     ->schema([
                         Select::make('producto_id')
                             ->label('Producto')
-                            ->relationship('producto', 'nombre')
                             ->searchable()
                             ->required()
-                            ->placeholder('Seleccione un producto'),
-
-                        TextInput::make('cantidad_unidades')
-                            ->label('Cantidad (unidades)')
-                            ->numeric()
-                            ->required()
-                            ->minValue(0)
-                            ->placeholder('Ej: 10'),
-
-                        TextInput::make('cantidad_paquetes')
-                            ->label('Cantidad (paquetes)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->default(0)
-                            ->placeholder('Ej: 2'),
-
-                        TextInput::make('precio_unitario')
-                            ->label('Precio unitario (Bs.)')
-                            ->numeric()
-                            ->required()
-                            ->minValue(0)
-                            ->placeholder('Ej: 10.50'),
-
-                        TextInput::make('precio_paquete')
-                            ->label('Precio por paquete (Bs.)')
-                            ->numeric()
-                            ->minValue(0)
-                            ->placeholder('Ej: 120.00'),
-
-                        Select::make('usuario_id')
-                            ->label('Registrado por')
-                            ->relationship('usuario', 'name')
-                            ->default(Auth::id())
-                            ->disabled()
-                            ->dehydrated()
-                            ->required(),
-
-                        Hidden::make('fecha')
-                            ->default(now())
-                            ->dehydrated(),
+                            ->reactive()
+                            ->options(Productos::all()->pluck('nombre', 'id'))
+                            ->options(Productos::activos()->pluck('nombre', 'id'))
+                            ->validationMessages([
+                                'required' => 'Debe seleccionar un producto.',
+                                'exists' => 'El producto seleccionado no es válido.',
+                            ])
+                            ->placeholder('Seleccione el producto'),
 
                         Textarea::make('observacion')
                             ->label('Observaciones')
                             ->placeholder('Notas adicionales del ingreso')
                             ->rows(3),
+
+                        TextInput::make('cantidad_unidades')
+                            ->label('Cantidad (unidades)')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(100000)
+                            ->placeholder('Ej: 10')
+                            ->helperText('Debe ser mayor a 0 y razonable (máx. 100,000).')
+                            ->validationMessages([
+                                'required' => 'Debe ingresar la cantidad de unidades.',
+                                'numeric' => 'La cantidad de unidades debe ser un número.',
+                                'min' => 'Debe ingresar al menos 1 unidad.',
+                                'max' => 'No puede ingresar más de 100,000 unidades.',
+                            ]),
+
+                        TextInput::make('cantidad_paquetes')
+                            ->label('Cantidad (paquetes)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(10000)
+                            ->default(0)
+                            ->placeholder('Ej: 2')
+                            ->helperText('Máximo permitido: 10,000 paquetes.')
+                            ->validationMessages([
+                                'numeric' => 'La cantidad de paquetes debe ser un número.',
+                                'min' => 'No se permiten valores negativos.',
+                                'max' => 'No puede ingresar más de 10,000 paquetes.',
+                            ]),
+
+                        TextInput::make('precio_unitario')
+                            ->label('Precio de compra unitario (Bs.)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(10000)
+                            ->placeholder('Ej: 10.50')
+                            ->helperText('Debe ser mayor a 1 y no exceder 10,000 Bs.')
+                            ->validationMessages([
+                                'required' => 'Debe ingresar el precio unitario.',
+                                'numeric' => 'El precio unitario debe ser un número.',
+                                'min' => 'El precio unitario debe ser al menos 1 Bs.',
+                                'max' => 'El precio unitario no puede exceder 10,000 Bs.',
+                            ]),
+
+                        TextInput::make('precio_paquete')
+                            ->label('Precio de compra paquete (Bs.)')
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(100000)
+                            ->placeholder('Ej: 120.00')
+                            ->helperText('Debe estar entre 1 y 100,000 Bs.')
+                            ->validationMessages([
+                                'numeric' => 'El precio por paquete debe ser un número.',
+                                'min' => 'El precio del paquete debe ser al menos 1 Bs.',
+                                'max' => 'El precio del paquete no puede exceder 100,000 Bs.',
+                            ]),
+
+                        DatePicker::make('fecha_vencimiento')
+                            ->label('Fecha de vencimiento')
+                            ->placeholder('Solo si el producto es perecedero')
+                            ->visible(fn(callable $get) => optional(Productos::find($get('producto_id')))->es_perecedero)
+                            ->required(fn(callable $get) => optional(Productos::find($get('producto_id')))->es_perecedero)
+                            ->minDate(now())
+                            ->hint('Requerido para productos perecederos')
+                            ->reactive()
+                            ->columnSpan(2),
+
+                        Hidden::make('fecha')
+                            ->default(now())
+                            ->dehydrated(),
                     ]),
+
+                Section::make('Control de cambios')
+                    ->icon('heroicon-o-user-circle')
+                    ->collapsible()
+                    ->columns(1)
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->schema([
+                        Placeholder::make('registrado_por')
+                            ->label('Registrado por')
+                            ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                        Placeholder::make('modificado_por')
+                            ->label('Modificado por')
+                            ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                    ]),
+
             ]);
     }
 
@@ -185,16 +234,26 @@ class IngresoProductoResource extends Resource
                     ->money('BOB')
                     ->sortable(),
 
-                TextColumn::make('usuario.name')
-                    ->label('Registrado por')
-                    ->icon('heroicon-o-user')
-                    ->sortable(),
-
                 TextColumn::make('fecha')
                     ->label('Fecha')
                     ->icon('heroicon-o-calendar-days')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('producto_id')

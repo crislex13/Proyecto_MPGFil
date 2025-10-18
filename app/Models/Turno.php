@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Traits\HasAuditoria;
 
 class Turno extends Model
 {
+    use HasAuditoria;
     protected $fillable = [
         'nombre',
         'dia',
@@ -15,6 +17,8 @@ class Turno extends Model
         'duracion_minutos',
         'estado',
         'personal_id',
+        'registrado_por',
+        'modificado_por',
     ];
 
     protected static function booted(): void
@@ -42,6 +46,16 @@ class Turno extends Model
     public function personal()
     {
         return $this->belongsTo(Personal::class);
+    }
+
+    public function registradoPor()
+    {
+        return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    public function modificadoPor()
+    {
+        return $this->belongsTo(User::class, 'modificado_por');
     }
 
 }

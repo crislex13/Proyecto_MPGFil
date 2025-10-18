@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\HasAuditoria;
 
 class PermisoCliente extends Model
 {
+    use HasAuditoria;
     protected $table = 'permisos_clientes';
 
     protected $fillable = [
@@ -15,6 +17,8 @@ class PermisoCliente extends Model
         'motivo',
         'estado',
         'autorizado_por',
+        'registrado_por',
+        'modificado_por',
     ];
 
     public function cliente(): BelongsTo

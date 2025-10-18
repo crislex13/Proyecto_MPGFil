@@ -73,12 +73,12 @@ class PlanResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_plan');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_plan');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -122,6 +122,18 @@ class PlanResource extends Resource
         ]);
     }
 
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['registrado_por'] = auth()->id();
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['modificado_por'] = auth()->id();
+        return $data;
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -156,6 +168,22 @@ class PlanResource extends Resource
                     ->icon('heroicon-o-clock')
                     ->formatStateUsing(fn($state) => $state ? \Carbon\Carbon::parse($state)->format('H:i') : '-')
                     ->sortable(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\Filter::make('ingresos_ilimitados')
@@ -164,7 +192,44 @@ class PlanResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este plan'),
-                Tables\Actions\DeleteAction::make()->tooltip('Eliminar este plan'),
+                Tables\Actions\Action::make('ver')
+                    ->label('Ver Detalles')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading('Detalles del Plan')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->form(fn(Plan $record) => [
+                        Section::make('Detalles del Plan')
+                            ->icon('heroicon-o-clipboard-document-list')
+                            ->schema([
+                                TextInput::make('nombre')
+                                    ->label('Nombre del Plan')
+                                    ->default($record->nombre)
+                                    ->disabled(),
+
+                                TextInput::make('duracion_dias')
+                                    ->label('Duración (días)')
+                                    ->default($record->duracion_dias)
+                                    ->disabled(),
+
+                                TextInput::make('hora_inicio')
+                                    ->label('Hora de Inicio')
+                                    ->default($record->hora_inicio ? \Carbon\Carbon::parse($record->hora_inicio)->format('H:i') : '-')
+                                    ->disabled(),
+
+                                TextInput::make('hora_fin')
+                                    ->label('Hora de Fin')
+                                    ->default($record->hora_fin ? \Carbon\Carbon::parse($record->hora_fin)->format('H:i') : '-')
+                                    ->disabled(),
+
+                                TextInput::make('ingresos_ilimitados')
+                                    ->label('Ingresos Ilimitados')
+                                    ->default($record->ingresos_ilimitados ? 'Sí' : 'No')
+                                    ->disabled(),
+                            ])
+                            ->columns(2),
+                    ]),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

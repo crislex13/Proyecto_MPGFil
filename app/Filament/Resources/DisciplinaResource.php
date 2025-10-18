@@ -71,12 +71,12 @@ class DisciplinaResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return auth()->user()?->can('delete_disciplina');
+        return false;
     }
 
     public static function canDeleteAny(): bool
     {
-        return auth()->user()?->can('delete_any_disciplina');
+        return false;
     }
 
     public static function form(Form $form): Form
@@ -108,6 +108,18 @@ class DisciplinaResource extends Resource
         ]);
     }
 
+    public static function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['registrado_por'] = auth()->id();
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $data['modificado_por'] = auth()->id();
+        return $data;
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -129,6 +141,22 @@ class DisciplinaResource extends Resource
                     ->icon('heroicon-o-eye')
                     ->limit(40)
                     ->tooltip(fn($record) => $record->observaciones),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
                 Tables\Filters\Filter::make('con_observaciones')
@@ -137,7 +165,34 @@ class DisciplinaResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar disciplina'),
-                Tables\Actions\DeleteAction::make()->tooltip('Eliminar disciplina'),
+                Tables\Actions\Action::make('ver')
+                    ->label('Ver Detalles')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->modalHeading('Detalles de la Disciplina')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Cerrar')
+                    ->form(fn(Disciplina $record) => [
+                        Section::make('Detalles de la Disciplina')
+                            ->icon('heroicon-o-bolt')
+                            ->schema([
+                                TextInput::make('nombre')
+                                    ->label('Nombre')
+                                    ->default($record->nombre)
+                                    ->disabled(),
+
+                                TextInput::make('descripcion')
+                                    ->label('Descripción')
+                                    ->default($record->descripcion)
+                                    ->disabled(),
+
+                                Textarea::make('observaciones')
+                                    ->label('Observaciones')
+                                    ->default($record->observaciones)
+                                    ->disabled()
+                                    ->rows(3),
+                            ]),
+                    ]),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

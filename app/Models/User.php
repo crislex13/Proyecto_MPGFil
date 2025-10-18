@@ -8,9 +8,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use BezhanSalleh\FilamentShield\Traits\HasPanelShield;
+use App\Traits\HasAuditoria;
 
 class User extends Authenticatable
 {
+    use HasAuditoria;
     use HasFactory, Notifiable, SoftDeletes, HasRoles, HasPanelShield;
 
     protected $fillable = [
@@ -21,6 +23,8 @@ class User extends Authenticatable
         'telefono',
         'foto',
         'estado',
+        'registrado_por',
+        'modificado_por',
     ];
 
     protected $hidden = [
