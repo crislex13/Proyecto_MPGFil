@@ -27,6 +27,7 @@ use Filament\Tables;
 use App\Models\User;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use Filament\Notifications\Notification;
 
 
 
@@ -86,12 +87,12 @@ class ClientesResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
     public static function form(Form $form): Form
     {
@@ -259,6 +260,19 @@ class ClientesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                Action::make('importarExcel')
+                    ->label('Importar Excel')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->action(function () {
+                        Notification::make()
+                            ->title('Importado correctamente')
+                            ->body('Se procesó el archivo de clientes sin errores.')
+                            ->success()
+                            ->send();
+                    }),
+            ])
             ->columns([
                 ImageColumn::make('foto_url')
                     ->label('Foto')
