@@ -22,6 +22,7 @@ use App\Actions\Auth\CustomLogoutResponse;
 use Filament\Navigation\NavigationItem;
 use Filament\Navigation\NavigationGroup;
 
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel

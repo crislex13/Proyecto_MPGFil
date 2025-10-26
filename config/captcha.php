@@ -24,14 +24,15 @@ return [
     // Preset que usarás en la vista: captcha_src('flat')
     'flat' => [
         'length' => 5,
-        'fontColors' => ['#151515', '#222222', '#333333', '#444444'],
-        'width' => 300,
-        'height' => 70,
+        // Letras en color del gym (naranja) + gris oscuro para contraste ocasional
+        'fontColors' => ['#FF6600', '#E65C00', '#CC5200', '#4E5054'],
+        'width' => 360,   // antes 300
+        'height' => 90,    // antes 70
         'math' => false,
-        'quality' => 90,
-        'lines' => 4,
-        'bgImage' => false,      // más limpio
-        'bgColor' => '#ffffff',  // fondo claro = mejor lectura
+        'quality' => 95,
+        'lines' => 3,     // menos líneas para mejor lectura
+        'bgImage' => false,
+        'bgColor' => '#ffffff', // si quieres oscuro: '#0B0F16'
         'contrast' => -8,
         'sensitive' => false,
     ],

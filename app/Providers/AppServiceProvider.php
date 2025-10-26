@@ -54,6 +54,9 @@ use App\Policies\SesionAdicionalPolicy;
 use App\Policies\TurnoPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VentaProductoPolicy;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Auth\Events\Logout;
+use App\Models\ActivityLog;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -108,7 +111,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(VentaProducto::class, VentaProductoPolicy::class);
 
-
+        // ✅ Listener de logout (bitácora)
+        Event::listen(Logout::class, function (Logout $event) {
+            ActivityLog::create([
+                'log_name'    => 'auth',
+                'event'       => 'logout',
+                'description' => 'Cierre de sesión',
+                'causer_type' => $event->user ? get_class($event->user) : null,
+                'causer_id'   => $event->user->id ?? null,
+                'ip_address'  => request()->ip(),
+                'user_agent'  => (string) request()->userAgent(),
+            ]);
+        });
 
 
     }
