@@ -16,13 +16,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action as TableAction;
-
+use Illuminate\Support\Carbon;
 use Filament\Tables\Actions\Action;
 use Filament\Actions\Action as FormAction;
 use Filament\Tables\Filters\DateFilter;
 use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
 use Illuminate\Database\Eloquent\Builder;
+use App\Services\AsistenciaService;
 
 
 class AsistenciaResource extends Resource
@@ -139,12 +140,13 @@ class AsistenciaResource extends Resource
                     ->label('Entrada')
                     ->icon('heroicon-o-clock')
                     ->dateTime()
-                    ->getStateUsing(fn($record) => $record?->hora_entrada),
+                    ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('Y-m-d H:i') : '—'),
 
                 TextColumn::make('hora_salida')
                     ->label('Salida')
                     ->icon('heroicon-o-clock')
                     ->dateTime()
+                    ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('Y-m-d H:i') : '—')
                     ->placeholder('—'),
 
                 TextColumn::make('estado')
@@ -178,6 +180,19 @@ class AsistenciaResource extends Resource
                     ->label('Buscador')
                     ->searchable()
                     ->visible(false), // Oculta esta columna
+
+                TextColumn::make('min_restantes')  // <- usamos el accessor directamente
+                    ->label('Restante')
+                    ->formatStateUsing(
+                        fn(?int $state): string =>
+                        is_null($state) ? '—' : ($state <= 0 ? 'Finalizado' : $state . ' min')
+                    )
+                    ->badge()
+                    ->color(
+                        fn(?int $state): string =>
+                        is_null($state) ? 'gray' : ($state <= 5 ? 'danger' : ($state <= 15 ? 'warning' : 'secondary'))
+                    )
+                    ->sortable(false),
             ])
 
             ->defaultSort('hora_entrada', 'desc')
@@ -229,13 +244,11 @@ class AsistenciaResource extends Resource
                     ->icon('heroicon-o-arrow-right-circle')
                     ->visible(
                         fn($record) =>
-                        $record->tipo_asistencia === 'personal' &&
-                        $record->hora_salida === null
+                        is_null($record->hora_salida) &&
+                        in_array($record->tipo_asistencia, ['plan', 'sesion', 'personal'])
                     )
                     ->requiresConfirmation()
-                    ->action(fn($record) => $record->update([
-                        'hora_salida' => now(),
-                    ])),
+                    ->action(fn($record) => $record->update(['hora_salida' => now()])),
             ])
 
 
@@ -247,28 +260,51 @@ class AsistenciaResource extends Resource
                         TextInput::make('ci')
                             ->label('C.I.')
                             ->required()
-                            ->placeholder('Ingresa el CI')
+                            ->placeholder('Ingresa el CI'),
                     ])
                     ->action(function (array $data) {
                         $ci = trim($data['ci']);
+
                         $cliente = Clientes::where('ci', $ci)->first();
                         $personal = Personal::where('ci', $ci)->first();
 
                         if ($cliente && !$personal) {
-                            app(\App\Filament\Resources\AsistenciaResource\Pages\ListAsistencias::class)
-                                ->registrarComoClienteManual($cliente);
-                        } elseif (!$cliente && $personal) {
-                            app(\App\Filament\Resources\AsistenciaResource\Pages\ListAsistencias::class)
-                                ->registrarComoPersonalManual($personal);
-                        } elseif ($cliente && $personal) {
-                            session()->flash('ci_preseleccionado', $ci);
-                            redirect('/admin/asistencias');
-                        } else {
+                            // 🔁 Toggle: si tiene asistencia abierta hoy → salida; si no → entrada
+                            AsistenciaService::toggleCliente($cliente, now());
                             Notification::make()
-                                ->title('❌ CI no registrado')
-                                ->danger()
+                                ->success()
+                                ->title('Marca registrada')
+                                ->body('Cliente: entrada/salida según corresponda.')
                                 ->send();
+
+                            return;
                         }
+
+                        if ($personal && !$cliente) {
+                            AsistenciaService::togglePersonal($personal, now());
+                            Notification::make()
+                                ->success()
+                                ->title('Marca registrada')
+                                ->body('Personal: entrada/salida según corresponda.')
+                                ->send();
+
+                            return;
+                        }
+
+                        if ($cliente && $personal) {
+                            Notification::make()
+                                ->warning()
+                                ->title('CI duplicado')
+                                ->body('Existe como cliente y personal. Resuelve antes de marcar.')
+                                ->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->danger()
+                            ->title('CI no registrado')
+                            ->send();
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query, $livewire) {

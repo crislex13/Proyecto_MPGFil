@@ -44,10 +44,10 @@ class ProcesarAsistenciasBiometrico extends Command
                 $personal = Personal::where('ci', $ci)->first();
 
                 if ($personal) {
-                    AsistenciaService::registrarComoPersonal($personal, $horaEntrada);
+                    AsistenciaService::togglePersonal($personal, $horaEntrada);
                     $procesados++;
                 } elseif ($cliente) {
-                    AsistenciaService::registrarComoCliente($cliente, $horaEntrada);
+                    AsistenciaService::toggleCliente($cliente, $horaEntrada);
                     $procesados++;
                 } else {
                     Log::warning("CI no encontrado en registros biométricos: {$ci}");

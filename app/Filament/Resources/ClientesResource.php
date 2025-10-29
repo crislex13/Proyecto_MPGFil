@@ -148,7 +148,6 @@ class ClientesResource extends Resource
                         ->tel()
                         ->maxLength(13)
                         ->minLength(8)
-                        ->required()
                         ->default('+591')
                         ->placeholder('+59171234567')
                         ->prefixIcon('heroicon-o-device-phone-mobile')

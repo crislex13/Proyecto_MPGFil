@@ -176,7 +176,7 @@ class PersonalResource extends Resource
                         ->rules(fn($record) => [
                             'nullable',
                             'email:rfc',
-                            Rule::unique('clientes', 'correo')->ignore($record?->id),
+                            Rule::unique('personals', 'correo')->ignore($record?->id),
                         ])
                         ->validationMessages([
                             'email' => 'Debes ingresar un correo electrónico válido.',
