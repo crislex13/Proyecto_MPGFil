@@ -36,7 +36,7 @@ class ListAsistencias extends ListRecords
                         ->placeholder('Ingresa el CI sin espacios'),
                 ])
                 ->action(function (array $data): void {
-                    $ci = trim((string)$data['ci']);
+                    $ci = trim((string) $data['ci']);
                     // quitar todos los espacios intermedios
                     $ci = preg_replace('/\s+/', '', $ci) ?? '';
                     $this->procesarCi($ci);
@@ -51,7 +51,7 @@ class ListAsistencias extends ListRecords
                 ->modalCancelActionLabel('Cancelar')
                 ->closeModalByClickingAway(false)
                 ->color('info')
-                ->visible(fn (): bool => $this->mostrarModal)
+                ->visible(fn(): bool => $this->mostrarModal)
                 ->requiresConfirmation()
                 ->action(function (): void {
                     if ($this->cliente) {
@@ -86,7 +86,7 @@ class ListAsistencias extends ListRecords
             return;
         }
 
-        $this->cliente  = Clientes::where('ci', $ci)->first();
+        $this->cliente = Clientes::where('ci', $ci)->first();
         $this->personal = Personal::where('ci', $ci)->first();
 
         // Solo cliente
@@ -125,10 +125,10 @@ class ListAsistencias extends ListRecords
     private function notificar(bool $ok, string $msg): void
     {
         Notification::make()
-            ->title($ok ? '✅ Marca registrada' : '🚫 Acceso denegado')
-            ->body($msg)
+                    ->title($ok ? '✅ Marca registrada' : '🚫 Acceso denegado')
+                    ->body($msg)
             ->{$ok ? 'success' : 'danger'}()
-            ->send();
+                ->send();
     }
 
     private function resetUi(): void
@@ -154,4 +154,47 @@ class ListAsistencias extends ListRecords
      * Evitamos lógica on-the-fly (por cada tecla). 
      * El registro ocurre sólo por acción del formulario o sesión.
      */
+
+    protected function getTablePollingInterval(): ?string
+    {
+        return '20s'; // refresco cada 20s
+    }
+
+    protected function onTablePolling(): void
+    {
+        $this->avisarRestantes();
+    }
+
+    protected function avisarRestantes(): void
+    {
+        $abiertas = Asistencia::query()
+            ->whereNull('hora_salida')
+            ->latest('hora_entrada')
+            ->get();
+
+        foreach ($abiertas as $a) {
+            $rest = $a->min_restantes;   // accessor
+
+            if (is_null($rest))
+                continue;        // sin fin programado
+            if ($rest <= 0)
+                continue;            // ya terminó
+            if ($rest > 5)
+                continue;             // aún falta más de 5
+
+            // evita repetir notificación
+            $key = "warn_asistencia_{$a->id}";
+            if (!cache()->get($key)) {
+                Notification::make()
+                    ->title("⏳ {$a->nombre_completo} termina en {$rest} min")
+                    ->body('Gestiona la salida a tiempo.')
+                    ->warning()
+                    ->persistent()
+                    ->send();
+
+                cache()->put($key, true, now()->addMinutes(10));
+            }
+        }
+    }
+
 }
