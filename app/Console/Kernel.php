@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\RegistrarFaltasSesionesAdicionales::class,
         \App\Console\Commands\RegistrarFaltasPersonal::class,
         \App\Console\Commands\RegistrarPermisosComoAsistencia::class,
+        \App\Console\Commands\AutocerrarAsistencias::class,
     ];
 
     protected function schedule(Schedule $schedule): void
@@ -25,6 +26,13 @@ class Kernel extends ConsoleKernel
         $schedule->command('asistencias:registrar-faltas')->dailyAt('23:59');
         $schedule->command('clientes:registrar-faltas')->dailyAt('23:59');
         $schedule->command('sesiones:registrar-faltas')->dailyAt('23:59');
+        $cada = (int) config('maxpower.autocierre.intervalo_cron_min', 5);
+
+        $schedule->command('asistencias:auto-cerrar')
+            ->everyMinute()
+            ->when(fn() => now()->minute % max(1, $cada) === 0)
+            ->withoutOverlapping()
+            ->runInBackground();
 
     }
 

@@ -58,6 +58,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Logout;
 use App\Models\ActivityLog;
 
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -110,6 +111,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Turno::class, TurnoPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(VentaProducto::class, VentaProductoPolicy::class);
+        
 
         // ✅ Listener de logout (bitácora)
         Event::listen(Logout::class, function (Logout $event) {

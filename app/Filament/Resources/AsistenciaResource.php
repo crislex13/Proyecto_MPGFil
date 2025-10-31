@@ -11,20 +11,14 @@ use Filament\Forms\Form;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Actions\Action as TableAction;
-use Illuminate\Support\Carbon;
-use Filament\Tables\Actions\Action;
-use Filament\Actions\Action as FormAction;
-use Filament\Tables\Filters\DateFilter;
-use Filament\Tables\Filters\Filter;
 use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
-use App\Services\AsistenciaService;
-
+use Illuminate\Support\Carbon;
 
 class AsistenciaResource extends Resource
 {
@@ -34,12 +28,10 @@ class AsistenciaResource extends Resource
     {
         return 'Asistencias';
     }
-
     public static function getNavigationGroup(): string
     {
         return 'Control de Accesos';
     }
-
     public static function getNavigationIcon(): string
     {
         return 'heroicon-o-check-circle';
@@ -48,7 +40,6 @@ class AsistenciaResource extends Resource
     {
         return 'Asistencia';
     }
-
     public static function getPluralModelLabel(): string
     {
         return 'Asistencias';
@@ -58,79 +49,79 @@ class AsistenciaResource extends Resource
     {
         return auth()->user()?->can('view_any_asistencia');
     }
-
     public static function canViewAny(): bool
     {
         return auth()->user()?->can('view_any_asistencia');
     }
-
     public static function canView($record): bool
     {
         return auth()->user()?->can('view_asistencia');
     }
-
     public static function canCreate(): bool
     {
         return auth()->user()?->can('create_asistencia');
     }
-
     public static function canEdit($record): bool
     {
         return auth()->user()?->can('update_asistencia');
     }
-
     public static function canDelete($record): bool
     {
         return false;
     }
-
     public static function canDeleteAny(): bool
     {
         return false;
     }
+
     public static function form(Form $form): Form
     {
+        // El form aquí no hace marcación; queda como placeholder si lo necesitas luego.
         return $form->schema([
             TextInput::make('ci')
                 ->label('CI')
-                ->required()
-                ->placeholder('Ingrese C.I. para registrar asistencia'),
+                ->placeholder('Este formulario no marca asistencias. Usa el botón del listado.')
+                ->disabled(),
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
-
             ->persistSearchInSession()
             ->searchPlaceholder('Buscar por nombre o CI')
+            ->defaultSort('hora_entrada', 'desc')
             ->columns([
                 ImageColumn::make('foto_url')
                     ->label('Foto')
                     ->circular()
-                    ->height(40),
+                    ->height(40)
+                    ->getStateUsing(fn($record) => $record->asistible?->foto_url ?? null),
 
                 TextColumn::make('nombre_completo')
                     ->label('Nombre')
                     ->getStateUsing(
                         fn($record) =>
-                        $record->cliente?->nombre_completo ??
-                        $record->personal?->nombre_completo ??
-                        '—'
-                    ),
+                        $record->asistible?->nombre_completo ?? '—'
+                    )
+                    ->searchable(isIndividual: false),
 
                 TextColumn::make('ci')
                     ->label('CI')
                     ->icon('heroicon-o-identification')
-                    ->getStateUsing(
-                        fn($record) =>
-                        $record->asistible?->ci ?? '—'
-                    )
-                    ->extraAttributes(['style' => 'width: 100px; white-space: nowrap']),
+                    ->getStateUsing(fn($record) => $record->asistible?->ci ?? '—')
+                    ->extraAttributes(['style' => 'width: 110px; white-space: nowrap']),
 
                 TextColumn::make('rol')
                     ->label('Rol')
-                    ->icon('heroicon-o-user-circle'),
+                    ->icon('heroicon-o-user-circle')
+                    ->state(function ($record) {
+                        return match ($record->asistible_type) {
+                            Clientes::class => 'Cliente',
+                            Personal::class => 'Personal',
+                            default => '—',
+                        };
+                    }),
 
                 TextColumn::make('tipo_asistencia')
                     ->label('Tipo')
@@ -139,13 +130,11 @@ class AsistenciaResource extends Resource
                 TextColumn::make('hora_entrada')
                     ->label('Entrada')
                     ->icon('heroicon-o-clock')
-                    ->dateTime()
                     ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('Y-m-d H:i') : '—'),
 
                 TextColumn::make('hora_salida')
                     ->label('Salida')
                     ->icon('heroicon-o-clock')
-                    ->dateTime()
                     ->formatStateUsing(fn($state) => $state ? Carbon::parse($state)->format('Y-m-d H:i') : '—')
                     ->placeholder('—'),
 
@@ -162,6 +151,18 @@ class AsistenciaResource extends Resource
                         default => 'secondary',
                     }),
 
+                TextColumn::make('min_restantes')
+                    ->label('Restante')
+                    ->formatStateUsing(
+                        fn(?int $state): string =>
+                        is_null($state) ? '—' : ($state <= 0 ? 'Finalizado' : $state . ' min')
+                    )
+                    ->badge()
+                    ->color(
+                        fn(?int $state): string =>
+                        is_null($state) ? 'gray' : ($state <= 5 ? 'danger' : ($state <= 15 ? 'warning' : 'secondary'))
+                    ),
+
                 TextColumn::make('observacion')
                     ->label('Observación')
                     ->icon('heroicon-o-information-circle')
@@ -174,29 +175,15 @@ class AsistenciaResource extends Resource
 
                 TextColumn::make('usuarioRegistro.name')
                     ->label('Registrado por')
-                    ->icon('heroicon-o-user-circle'),
+                    ->icon('heroicon-o-user-circle')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
+                // Para facilitar búsquedas por tipo sin mostrarlo
                 TextColumn::make('asistible_type')
                     ->label('Buscador')
                     ->searchable()
-                    ->visible(false), // Oculta esta columna
-
-                TextColumn::make('min_restantes')  // <- usamos el accessor directamente
-                    ->label('Restante')
-                    ->formatStateUsing(
-                        fn(?int $state): string =>
-                        is_null($state) ? '—' : ($state <= 0 ? 'Finalizado' : $state . ' min')
-                    )
-                    ->badge()
-                    ->color(
-                        fn(?int $state): string =>
-                        is_null($state) ? 'gray' : ($state <= 5 ? 'danger' : ($state <= 15 ? 'warning' : 'secondary'))
-                    )
-                    ->sortable(false),
+                    ->visible(false),
             ])
-
-            ->defaultSort('hora_entrada', 'desc')
-
             ->filters([
                 SelectFilter::make('estado')
                     ->label('Estado')
@@ -225,91 +212,32 @@ class AsistenciaResource extends Resource
                     ]),
 
                 Filter::make('fecha')
-                    ->form([
-                        DatePicker::make('fecha')
-                            ->label('Selecciona una fecha'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when($data['fecha'], fn($query, $date) =>
-                                $query->whereDate('fecha', $date));
-                    })
+                    ->form([DatePicker::make('fecha')->label('Selecciona una fecha')])
+                    ->query(
+                        fn($query, array $data) =>
+                        $query->when($data['fecha'] ?? null, fn($q, $date) => $q->whereDate('fecha', $date))
+                    )
                     ->label('Filtrar por Fecha'),
             ])
-
             ->actions([
                 TableAction::make('registrar_salida')
                     ->label('Registrar salida')
                     ->color('success')
                     ->icon('heroicon-o-arrow-right-circle')
-                    ->visible(
-                        fn($record) =>
-                        is_null($record->hora_salida) &&
-                        in_array($record->tipo_asistencia, ['plan', 'sesion', 'personal'])
-                    )
+                    ->visible(fn($record) => is_null($record->hora_salida))
                     ->requiresConfirmation()
-                    ->action(fn($record) => $record->update(['hora_salida' => now()])),
-            ])
-
-
-            ->headerActions([
-                Action::make('registrarAsistencia')
-                    ->label('Registrar Asistencia por CI')
-                    ->icon('heroicon-o-identification')
-                    ->form([
-                        TextInput::make('ci')
-                            ->label('C.I.')
-                            ->required()
-                            ->placeholder('Ingresa el CI'),
-                    ])
-                    ->action(function (array $data) {
-                        $ci = trim($data['ci']);
-
-                        $cliente = Clientes::where('ci', $ci)->first();
-                        $personal = Personal::where('ci', $ci)->first();
-
-                        if ($cliente && !$personal) {
-                            // 🔁 Toggle: si tiene asistencia abierta hoy → salida; si no → entrada
-                            AsistenciaService::toggleCliente($cliente, now());
-                            Notification::make()
-                                ->success()
-                                ->title('Marca registrada')
-                                ->body('Cliente: entrada/salida según corresponda.')
-                                ->send();
-
+                    ->action(function ($record) {
+                        if ($record->hora_salida) {
+                            Notification::make()->title('Ya tiene salida')->warning()->send();
                             return;
                         }
-
-                        if ($personal && !$cliente) {
-                            AsistenciaService::togglePersonal($personal, now());
-                            Notification::make()
-                                ->success()
-                                ->title('Marca registrada')
-                                ->body('Personal: entrada/salida según corresponda.')
-                                ->send();
-
-                            return;
-                        }
-
-                        if ($cliente && $personal) {
-                            Notification::make()
-                                ->warning()
-                                ->title('CI duplicado')
-                                ->body('Existe como cliente y personal. Resuelve antes de marcar.')
-                                ->send();
-
-                            return;
-                        }
-
-                        Notification::make()
-                            ->danger()
-                            ->title('CI no registrado')
-                            ->send();
+                        $record->update(['hora_salida' => now()]);
+                        Notification::make()->title('Salida registrada')->success()->send();
                     }),
             ])
             ->modifyQueryUsing(function (Builder $query, $livewire) {
+                // Búsqueda por nombre/apellidos/CI del asistible
                 $search = $livewire->getTableSearch();
-
                 if ($search) {
                     $query->whereHas('asistible', function ($sub) use ($search) {
                         $sub->where(function ($s) use ($search) {
@@ -320,7 +248,6 @@ class AsistenciaResource extends Resource
                         });
                     });
                 }
-
                 return $query;
             });
     }

@@ -120,4 +120,15 @@ class IngresoProducto extends Model
         return $this->hasOne(LoteProducto::class, 'ingreso_producto_id');
     }
 
+    public function registradoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    // (Opcional) si quieres también la de modificador:
+    public function modificadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'modificado_por');
+    }
+
 }

@@ -249,7 +249,30 @@ class SesionAdicionalResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('reporteSesionesDia')
+                    ->label('PDF Diario (hoy)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.sesiones.dia', ['date' => now()->toDateString()]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('reporteSesionesMes')
+                    ->label('PDF Mensual (actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.sesiones.mes', ['year' => now()->year, 'month' => now()->month]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('reporteSesionesAnio')
+                    ->label('PDF Anual (actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.sesiones.anio', ['year' => now()->year]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ]);
+
     }
     public static function getPages(): array
     {

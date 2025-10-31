@@ -45,6 +45,7 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 \App\Filament\Pages\InstructorDashboard::class,
                 \App\Filament\Pages\ClienteDashboard::class,
+                \App\Filament\Pages\KioskAsistencias::class,
             ])
             ->widgets(
                 []
@@ -69,17 +70,52 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentShieldPlugin::make(),
             ])
-            ->renderHook('panels::body.end', fn() => <<<HTML
-    <style>
-        /* Estilo global para que las tablas puedan hacer scroll horizontal */
-        .fi-ta {
-            overflow-x: auto !important;
-        }
+            ->navigationItems([
+                NavigationItem::make('Kiosco de Asistencias')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->group('Control de Accesos')
+                    ->url(fn() => url('/admin/kiosk'))   // <-- usa tu slug real
+                    ->openUrlInNewTab()                   // <-- abrir en otra pestaña
+                    ->sort(10)
+                    ->visible(fn() => auth()->user()?->can('view_any_asistencia')
+                        || auth()->user()?->hasRole('recepcionista')),
+            ])
+            ->renderHook('panels::body.end', function () {
+                // CSS global que ya tenías (scroll horizontal en tablas)
+                $global = <<<HTML
+<style>
+  /* Estilo global para que las tablas puedan hacer scroll horizontal */
+  .fi-ta { overflow-x: auto !important; }
+  .fi-ta table { min-width: 1000px; }
+</style>
+HTML;
 
-        .fi-ta table {
-            min-width: 1000px; /* Ajusta según cuántas columnas tengas */
-        }
-    </style>
-HTML);
+                // CSS SOLO para la página /admin/kiosk (ocultar sidebar/topbar y expandir layout)
+                $kiosk = '';
+                if (request()->is('admin/kiosk')) {
+                    $kiosk = <<<HTML
+<style>
+  .fi-sidebar,
+  .fi-topbar,
+  .fi-sidebar-header,
+  .fi-header,
+  [data-sidebar],
+  [data-topbar] { display: none !important; }
+
+  .fi-main, .fi-body, .fi-content {
+    margin: 0 !important;
+    padding-left: 0 !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .fi-layout, .fi-main > div { max-width: 100% !important; }
+  .fi-main .fi-page { padding: 0 !important; }
+</style>
+HTML;
+                }
+
+                return $global . $kiosk;
+            });
     }
 }

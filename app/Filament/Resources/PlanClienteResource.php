@@ -539,6 +539,31 @@ class PlanClienteResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este plan'),
                 Tables\Actions\DeleteAction::make()->tooltip('Eliminar este plan'),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('reporteDiario')
+                    ->label('PDF Diario (hoy)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.planes.dia', ['date' => now()->toDateString()]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('reporteMensual')
+                    ->label('PDF Mensual (actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.planes.mes', [
+                        'year' => now()->year,
+                        'month' => now()->month,
+                    ]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('reporteAnual')
+                    ->label('PDF Anual (actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.planes.anio', ['year' => now()->year]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ]);
     }
 

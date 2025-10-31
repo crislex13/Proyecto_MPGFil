@@ -18,6 +18,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
+use Filament\Forms;
 
 class IngresoProductoResource extends Resource
 {
@@ -279,6 +280,63 @@ class IngresoProductoResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este ingreso'),
                 Tables\Actions\DeleteAction::make()->tooltip('Eliminar este ingreso'),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('reporte_diario')
+                    ->label('PDF Diario')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->form([
+                        Forms\Components\DatePicker::make('date')->default(now())->required()->native(false),
+                    ])
+                    ->action(fn(array $data) => redirect()->route('reportes.ingresos.dia', ['date' => $data['date']])),
+
+                Tables\Actions\Action::make('reporte_mensual')
+                    ->label('PDF Mensual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->form([
+                        Forms\Components\Select::make('year')
+                            ->options(collect(range(now()->year, now()->year - 5))->mapWithKeys(fn($y) => [$y => $y])->toArray())
+                            ->default(now()->year)->required(),
+                        Forms\Components\Select::make('month')
+                            ->options([
+                                1 => 'Enero',
+                                2 => 'Febrero',
+                                3 => 'Marzo',
+                                4 => 'Abril',
+                                5 => 'Mayo',
+                                6 => 'Junio',
+                                7 => 'Julio',
+                                8 => 'Agosto',
+                                9 => 'Septiembre',
+                                10 => 'Octubre',
+                                11 => 'Noviembre',
+                                12 => 'Diciembre',
+                            ])->default(now()->month)->required(),
+                    ])
+                    ->action(fn(array $data) => redirect()->route('reportes.ingresos.mes', $data)),
+
+                Tables\Actions\Action::make('reporte_anual')
+                    ->label('PDF Anual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->form([
+                        Forms\Components\Select::make('year')
+                            ->options(collect(range(now()->year, now()->year - 5))->mapWithKeys(fn($y) => [$y => $y])->toArray())
+                            ->default(now()->year)->required(),
+                    ])
+                    ->action(fn(array $data) => redirect()->route('reportes.ingresos.anio', $data)),
+
+                Tables\Actions\Action::make('reporte_rango')
+                    ->label('PDF por Rango')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->form([
+                        Forms\Components\DatePicker::make('start')->required()->native(false),
+                        Forms\Components\DatePicker::make('end')->required()->native(false),
+                    ])
+                    ->action(fn(array $data) => redirect()->route('reportes.ingresos.rango', $data)),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

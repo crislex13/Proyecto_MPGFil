@@ -9,6 +9,7 @@ use App\Traits\HasAuditoria;
 use App\Models\Clientes;
 use App\Models\Personal;
 use Illuminate\Support\Carbon;
+use App\Services\AsistenciaService;
 
 class Asistencia extends Model
 {
@@ -114,38 +115,29 @@ class Asistencia extends Model
             ->whereNull('hora_salida');
     }
 
+    // App/Models/Asistencia.php
     public function getMinRestantesAttribute(): ?int
     {
-        if ($this->hora_salida || !$this->hora_entrada) {
+        if ($this->hora_salida || !$this->hora_entrada)
             return null;
-        }
 
-        $fin = null;
-
-        // 1) Sesión adicional: usa hora_fin si existe
-        if ($this->tipo_asistencia === 'sesion' && $this->sesionAdicional && $this->sesionAdicional->hora_fin) {
-            $fin = Carbon::parse($this->sesionAdicional->hora_fin);
-        }
-
-        // 2) Plan: usa turnoHoy()->hora_fin si está disponible
-        if ($this->tipo_asistencia === 'plan') {
-            $asistible = $this->asistible; // <- puede ser null
-            if ($asistible && method_exists($asistible, 'turnoHoy')) {
-                $t = $asistible->turnoHoy();
-                if ($t && !empty($t->hora_fin)) {
-                    $fin = Carbon::parse($t->hora_fin);
-                }
-            }
-
-            // Si no hay hora_fin de turno, asumimos 90 min desde la entrada
-            if (!$fin) {
-                $fin = Carbon::parse($this->hora_entrada)->copy()->addMinutes(90);
-            }
-        }
-
+        $fin = AsistenciaService::finProgramadoPara($this);
         return $fin ? now()->diffInMinutes($fin, false) : null;
     }
 
 
+    public function scopeAbiertaDeCliente($query, Clientes $cliente)
+    {
+        return $query->where('asistible_id', $cliente->id)
+            ->where('asistible_type', Clientes::class)
+            ->whereNull('hora_salida');
+    }
+
+    public function scopeAbiertaDePersonal($query, Personal $personal)
+    {
+        return $query->where('asistible_id', $personal->id)
+            ->where('asistible_type', Personal::class)
+            ->whereNull('hora_salida');
+    }
 
 }
