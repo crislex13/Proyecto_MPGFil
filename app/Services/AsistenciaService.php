@@ -390,6 +390,28 @@ class AsistenciaService
             return [false, 'Plan sin horario hoy o día no permitido.'];
         }
 
+        // ⬇️ NUEVO: exigir estar dentro de alguna ventana del plan
+        $tieneVentanaActiva = false;
+        foreach ($ventanasPlan as $v) {
+            if (self::contieneMomento($v, $m, $tolPlanA, $tolPlanD)) {
+                $tieneVentanaActiva = true;
+                break;
+            }
+        }
+
+        if (!$tieneVentanaActiva) {
+            self::registrarDenegadoUnaVez(
+                'plan',
+                $cliente->id,
+                Clientes::class,
+                $fecha,
+                $m,
+                $origen,
+                'Fuera del horario permitido del plan'
+            );
+            return [false, 'Fuera del horario permitido del plan.'];
+        }
+
         $pc = $pc ?? self::planVigenteHoy($cliente, $m);
 
         // --- Política de ingresos diarios ---
