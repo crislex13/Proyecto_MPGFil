@@ -5,6 +5,8 @@ namespace App\Filament\Resources\PlanClienteResource\Pages;
 use App\Filament\Resources\PlanClienteResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt;
 
 class EditPlanCliente extends EditRecord
 {
@@ -13,7 +15,7 @@ class EditPlanCliente extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
         ];
     }
 
@@ -21,4 +23,5 @@ class EditPlanCliente extends EditRecord
     {
         return $this->getResource()::getUrl('index');
     }
+    
 }

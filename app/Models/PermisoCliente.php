@@ -21,6 +21,31 @@ class PermisoCliente extends Model
         'modificado_por',
     ];
 
+    protected static function booted()
+    {
+        static::saved(function (PermisoCliente $perm) {
+            // Solo cuando esté aprobado
+            if ($perm->estado !== 'aprobado') {
+                return;
+            }
+
+            // Toma el plan vigente del cliente (el más reciente)
+            $pc = \App\Models\PlanCliente::where('cliente_id', $perm->cliente_id)
+                ->where('estado', 'vigente')
+                ->latest('fecha_inicio')
+                ->first();
+
+            if (!$pc)
+                return;
+
+            // Recalcula considerando días permitidos + permisos dentro del rango base
+            $pc->fecha_final = $pc->calcularFechaFinalConDiasYPermisos();
+
+            // Guarda SIN disparar notificaciones/loops (y sin tocar estado si no quieres)
+            $pc->saveQuietly();
+        });
+    }
+
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Clientes::class);

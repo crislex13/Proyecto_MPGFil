@@ -40,40 +40,67 @@ class PlanCliente extends Model
 
     protected static function booted()
     {
-        static::creating(function ($plan) {
-            $plan->estado = $plan->calcularEstado();
-        });
-
-        static::updating(function ($plan) {
-            // Recalcular estado
-            $plan->estado = $plan->calcularEstado();
-
-            // Si cambia la fecha de inicio
-            if ($plan->isDirty('fecha_inicio')) {
-                $fechaInicio = Carbon::parse($plan->fecha_inicio);
-                $duracion = $plan->plan?->duracion_dias ?? 0;
-
-                // Buscar permisos aprobados dentro del nuevo rango
-                $permisosExtra = PermisoCliente::where('cliente_id', $plan->cliente_id)
-                    ->where('estado', 'aprobado')
-                    ->whereBetween('fecha', [
-                        $fechaInicio,
-                        $fechaInicio->copy()->addDays($duracion - 1)
-                    ])
-                    ->count();
-
-                // Nueva fecha final = duración del plan + días extra - 1
-                $plan->fecha_final = $fechaInicio->copy()->addDays($duracion + $permisosExtra - 1);
-            }
-        });
-
         static::saving(function ($plan) {
-            if (
-                $plan->estado === 'bloqueado' &&
-                $plan->saldo <= 0 &&
-                now()->between($plan->fecha_inicio, $plan->fecha_final)
-            ) {
-                $plan->estado = 'vigente';
+            // 1) Asegurar precio_plan desde PlanDisciplina si viene 0 o vacío
+            if (($plan->precio_plan ?? 0) <= 0 && $plan->plan_id && $plan->disciplina_id) {
+                $precio = \App\Models\PlanDisciplina::where('plan_id', $plan->plan_id)
+                    ->where('disciplina_id', $plan->disciplina_id)
+                    ->value('precio');
+
+                // Si no hay precio definido en plan_disciplinas, evita guardar basura:
+                if (is_null($precio)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'precio_plan' => 'No se encontró precio para la combinación Plan/Disciplina seleccionada.',
+                    ]);
+                }
+
+                $plan->precio_plan = (float) $precio;
+            }
+
+            // 2) Clamp de a_cuenta
+            $precio = (float) ($plan->precio_plan ?? 0);
+            $cuenta = (float) ($plan->a_cuenta ?? 0);
+            if ($cuenta > $precio) {
+                $cuenta = $precio;
+                $plan->a_cuenta = $cuenta;
+            }
+
+            // 3) Calcular total y saldo
+            $plan->total = $precio;
+            $plan->saldo = max($precio - $cuenta, 0);
+
+            // 3.5) Recalcular fecha_final SOLO cuando corresponde
+            $debeRecalcularFin = empty($plan->fecha_final)
+                || $plan->isDirty(['fecha_inicio', 'dias_permitidos', 'plan_id']);
+
+            if ($plan->fecha_inicio && optional($plan->plan)->duracion_dias && $debeRecalcularFin) {
+                $plan->fecha_final = $plan->calcularFechaFinalConDiasYPermisos();
+            }
+
+            // 4) Estado coherente
+            $estadoOriginal = $plan->getOriginal('estado');
+            $vencido = $plan->fecha_final
+                ? now()->greaterThan(Carbon::parse($plan->fecha_final))
+                : false;
+
+            if ($estadoOriginal === 'bloqueado') {
+                // solo vuelve a vigente si ya no hay deuda y está dentro de la vigencia
+                if (
+                    $plan->saldo <= 0 && $plan->fecha_inicio && $plan->fecha_final
+                    && now()->between($plan->fecha_inicio, $plan->fecha_final)
+                ) {
+                    $plan->estado = 'vigente';
+                } else {
+                    $plan->estado = 'bloqueado';
+                }
+            } else {
+                if ($vencido) {
+                    $plan->estado = 'vencido';
+                } elseif ($plan->saldo > 0) {
+                    $plan->estado = 'deuda';
+                } else {
+                    $plan->estado = 'vigente';
+                }
             }
         });
     }
@@ -125,23 +152,10 @@ class PlanCliente extends Model
             return 'bloqueado';
         }
 
-        $fechaInicio = Carbon::parse($this->fecha_inicio);
-        $duracion = $this->plan?->duracion_dias ?? 0;
+        // ✅ Fecha final REAL (días permitidos + permisos)
+        $fin = $this->calcularFechaFinalConDiasYPermisos(); // devuelve Carbon
 
-        // Fecha base (sin permisos)
-        $fechaFinalBase = $fechaInicio->copy()->addDays($duracion - 1);
-
-        // Contar permisos aprobados dentro del rango original
-        $permisosExtra = PermisoCliente::where('cliente_id', $this->cliente_id)
-            ->where('estado', 'aprobado')
-            ->whereBetween('fecha', [$fechaInicio, $fechaFinalBase])
-            ->count();
-
-        // Nueva fecha final considerando permisos
-        $fechaFinalConPermisos = $fechaFinalBase->copy()->addDays($permisosExtra);
-
-        // Comparar con fecha actual
-        if (now()->greaterThan($fechaFinalConPermisos)) {
+        if (now()->greaterThan($fin)) {
             return 'vencido';
         }
 
@@ -151,4 +165,75 @@ class PlanCliente extends Model
 
         return 'vigente';
     }
+
+    protected function castDiasToIndices($value): array
+    {
+        $map = ['domingo' => 0, 'lunes' => 1, 'martes' => 2, 'miercoles' => 3, 'jueves' => 4, 'viernes' => 5, 'sabado' => 6];
+
+        return collect($value ?? [])
+            ->map(fn($d) => is_numeric($d) ? intval($d) : ($map[strtolower($d)] ?? null))
+            ->filter(fn($v) => $v !== null)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    public function setDiasPermitidosAttribute($value): void
+    {
+        // Normaliza nombres/índices y guarda STRING JSON.
+        $norm = $this->castDiasToIndices($value);
+        $this->attributes['dias_permitidos'] = json_encode($norm, JSON_UNESCAPED_UNICODE);
+    }
+
+    public function calcularFechaFinalConDiasYPermisos(): Carbon
+    {
+        $planDias = (int) ($this->plan?->duracion_dias ?? 0);
+        $inicio = Carbon::parse($this->fecha_inicio)->startOfDay();
+        $diasSel = $this->dias_permitidos ?? [];
+
+        // Si no hay selección (o los 7 días), es rango corrido:
+        if (empty($diasSel) || count($diasSel) === 7) {
+            $finBase = $inicio->copy()->addDays(max($planDias - 1, 0));
+        } else {
+            // Cuenta solo días permitidos:
+            $permitidos = collect($diasSel)->map(fn($d) => (int) $d)->unique()->all();
+            $finBase = $inicio->copy();
+            $pend = $planDias;
+            $guard = 0;
+            while ($pend > 0 && $guard < 730) { // guard: límite de seguridad
+                if (in_array($finBase->dayOfWeek, $permitidos, true)) {
+                    $pend--;
+                }
+                if ($pend > 0)
+                    $finBase->addDay();
+                $guard++;
+            }
+        }
+
+        // Permisos aprobados dentro del rango base:
+        $permisosExtra = PermisoCliente::where('cliente_id', $this->cliente_id)
+            ->where('estado', 'aprobado')
+            ->whereBetween('fecha', [$inicio, $finBase])
+            ->count();
+
+        // ⬇️ En vez de addDays($permisosExtra), avanzamos contando SOLO días permitidos
+        if ($permisosExtra > 0) {
+            $permitidos = collect($diasSel)->map(fn($d) => (int) $d)->unique()->all();
+            $extraPend = $permisosExtra;
+            $guard = 0;
+            $cursor = $finBase->copy();
+            while ($extraPend > 0 && $guard < 730) {
+                $cursor->addDay();
+                if (empty($permitidos) || count($permitidos) === 7 || in_array($cursor->dayOfWeek, $permitidos, true)) {
+                    $extraPend--;
+                }
+                $guard++;
+            }
+            return $cursor;
+        }
+
+        return $finBase;
+    }
+
 }

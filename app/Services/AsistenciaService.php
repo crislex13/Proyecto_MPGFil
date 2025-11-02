@@ -42,26 +42,73 @@ class AsistenciaService
         string $origen,
         ?string $observacion = null
     ): void {
-        $ya = Asistencia::whereDate('fecha', $fecha)
+        $existe = Asistencia::whereDate('fecha', $fecha)
             ->where('asistible_id', $asistibleId)
             ->where('asistible_type', $asistibleType)
             ->where('tipo_asistencia', $tipo)
             ->where('estado', 'acceso_denegado')
-            ->exists();
+            ->first();
 
-        if (!$ya) {
-            Asistencia::create([
-                'asistible_id'        => $asistibleId,
-                'asistible_type'      => $asistibleType,
-                'tipo_asistencia'     => $tipo,
-                'fecha'               => $fecha,
-                'hora_entrada'        => $momento,
-                'estado'              => 'acceso_denegado',
-                'origen'              => $origen,
-                'usuario_registro_id' => auth()->id(),
-                'observacion'         => $observacion,
-            ]);
+        if ($existe) {
+            // Si quieres que reaparezca en el Kiosk cuando se repite el intento, "enciéndelo" tocando updated_at:
+            // $existe->touch();
+            return;
         }
+
+        Asistencia::create([
+            'asistible_id' => $asistibleId,
+            'asistible_type' => $asistibleType,
+            'tipo_asistencia' => $tipo,
+            'fecha' => $fecha,
+            'hora_entrada' => $momento,
+            'estado' => 'acceso_denegado',
+            'origen' => $origen,
+            'usuario_registro_id' => auth()->id(),
+            'observacion' => $observacion,
+        ]);
+    }
+
+    /* =========================
+     *  Helpers específicos (cliente)
+     * =========================*/
+
+    /** ¿Tiene permiso aprobado justo hoy? */
+    protected static function clienteTienePermisoAprobadoHoy(Clientes $c, Carbon $m): bool
+    {
+        if (!method_exists($c, 'permisos'))
+            return false;
+
+        return $c->permisos()
+            ->whereDate('fecha', $m->toDateString())
+            ->where('estado', 'aprobado')
+            ->exists();
+    }
+
+    /** Marca de deuda (ajusta al campo real que uses) */
+    protected static function clienteEstaEnDeuda(Clientes $c): bool
+    {
+        // Cambia 'deuda_activa' por tu bandera real de deuda
+        return (bool) data_get($c, 'deuda_activa', false);
+    }
+
+    /** ¿Sigue dentro de la ventana de gracia (N días desde fecha_inicio del plan)? */
+    protected static function clienteDentroGraciaDeuda(PlanCliente $pc, Carbon $m): bool
+    {
+        $gracia = (int) config('maxpower.cliente_gracia_deuda_dias', 5);
+        $inicio = Carbon::parse($pc->fecha_inicio)->startOfDay();
+        $fin = $inicio->copy()->addDays($gracia)->endOfDay();
+
+        return $m->greaterThanOrEqualTo($inicio) && $m->lessThanOrEqualTo($fin);
+    }
+
+    /** Cuenta de ingresos por plan hoy (para limitar a 1 si no es ilimitado) */
+    protected static function clienteIngresosPlanHoy(Clientes $c, Carbon $m): int
+    {
+        return Asistencia::whereDate('fecha', $m->toDateString())
+            ->where('asistible_id', $c->id)
+            ->where('asistible_type', Clientes::class)
+            ->where('tipo_asistencia', 'plan')
+            ->count();
     }
 
     /* =========================
@@ -70,17 +117,17 @@ class AsistenciaService
 
     public static function planVigenteHoy(?Clientes $cliente, Carbon $momento): ?PlanCliente
     {
-        if (!$cliente) return null;
+        if (!$cliente)
+            return null;
 
-        if (method_exists($cliente, 'planActivoDelDia')) {
-            return $cliente->planActivoDelDia(); // ya con ->plan()
-        }
+        $fecha = $momento->toDateString();
 
-        return $cliente->planesCliente()
-            ->whereDate('fecha_inicio', '<=', $momento->toDateString())
-            ->whereDate('fecha_final', '>=', $momento->toDateString())
+        // Siempre desde DB para evitar caché/relación stale
+        return PlanCliente::with('plan')
+            ->where('cliente_id', $cliente->id)
+            ->whereDate('fecha_inicio', '<=', $fecha)
+            ->whereDate('fecha_final', '>=', $fecha)
             ->latest('fecha_final')
-            ->with('plan')
             ->first();
     }
 
@@ -88,28 +135,36 @@ class AsistenciaService
     public static function diasPermitidosPlan(PlanCliente $pc): array
     {
         $src = $pc->dias_permitidos ?? [];
-        $map = ['lunes'=>1, 'martes'=>2, 'miercoles'=>3, 'jueves'=>4, 'viernes'=>5, 'sabado'=>6, 'domingo'=>7];
+        $map = ['domingo' => 0, 'lunes' => 1, 'martes' => 2, 'miercoles' => 3, 'jueves' => 4, 'viernes' => 5, 'sabado' => 6];
+
         $out = [];
         foreach ((array) $src as $d) {
-            $out[] = is_numeric($d) ? (int)$d : ($map[strtolower($d)] ?? null);
+            $out[] = is_numeric($d) ? (int) $d : ($map[strtolower($d)] ?? null);
         }
-        return array_values(array_unique(array_filter($out)));
+        // 0..6
+        return array_values(array_unique(array_filter($out, fn($v) => $v !== null && $v >= 0 && $v <= 6)));
     }
 
     private static function toTimeCarbon($v): ?Carbon
     {
-        if (!$v) return null;
-        if ($v instanceof \DateTimeInterface) return Carbon::createFromTimeString($v->format('H:i:s'));
-        return Carbon::createFromTimeString((string)$v);
+        if (!$v)
+            return null;
+        if ($v instanceof \DateTimeInterface) {
+            return Carbon::createFromTimeString($v->format('H:i:s'));
+        }
+        return Carbon::createFromTimeString((string) $v);
     }
 
     public static function ventanasPlanParaDia(Clientes $cliente, Carbon $momento): array
     {
         $pc = self::planVigenteHoy($cliente, $momento);
-        if (!$pc) return [];
+        if (!$pc)
+            return [];
 
-        // Día permitido
-        $dow = (int)$momento->dayOfWeekIso; // 1..7
+        // Día actual 0..6 (0=domingo … 6=sábado) porque PlanCliente guarda 0..6
+        $dow = (int) $momento->dayOfWeek;
+
+        // Días permitidos normalizados 0..6
         $permitidos = self::diasPermitidosPlan($pc);
         if (!in_array($dow, $permitidos, true)) {
             return [];
@@ -122,11 +177,11 @@ class AsistenciaService
             $hi = self::toTimeCarbon(data_get($pc->plan, 'hora_inicio'));
             $hf = self::toTimeCarbon(data_get($pc->plan, 'hora_fin'));
             if ($hi && $hf) {
-                $ventanas[] = ['inicio'=>$hi, 'fin'=>$hf, 'origen'=>'plan'];
+                $ventanas[] = ['inicio' => $hi, 'fin' => $hf, 'origen' => 'plan'];
             }
         }
 
-        // b) Horarios específicos (si existen relaciones)
+        // b) Horarios específicos (si existen)
         $colecciones = [];
         if (method_exists($pc, 'horarios')) {
             $pc->loadMissing('horarios');
@@ -139,14 +194,29 @@ class AsistenciaService
 
         foreach ($colecciones as $col) {
             foreach ($col as $h) {
-                if ((int)data_get($h, 'dia_semana') === $dow) {
+                $diaHorario = (int) data_get($h, 'dia_semana');
+
+                // Si tu tabla guarda 0..6, deja esta línea:
+                $coincide = ($diaHorario === $dow);
+                // Si guarda 1..7, usa en cambio: $coincide = ($diaHorario === (int) $momento->dayOfWeekIso);
+
+                if ($coincide) {
                     $hi = self::toTimeCarbon(data_get($h, 'hora_inicio'));
                     $hf = self::toTimeCarbon(data_get($h, 'hora_fin'));
                     if ($hi && $hf) {
-                        $ventanas[] = ['inicio'=>$hi, 'fin'=>$hf, 'origen'=>'horarios'];
+                        $ventanas[] = ['inicio' => $hi, 'fin' => $hf, 'origen' => 'horarios'];
                     }
                 }
             }
+        }
+
+        // ✅ Fallback: si hay día permitido pero SIN horarios, permite todo el día
+        if (empty($ventanas)) {
+            $ventanas[] = [
+                'inicio' => Carbon::createFromTimeString('00:00:00'),
+                'fin' => Carbon::createFromTimeString('23:59:59'),
+                'origen' => 'libre',
+            ];
         }
 
         return $ventanas;
@@ -170,7 +240,7 @@ class AsistenciaService
             if ($hi && $hf) {
                 $out[] = [
                     'inicio' => Carbon::parse($hi),
-                    'fin'    => Carbon::parse($hf),
+                    'fin' => Carbon::parse($hf),
                     'origen' => 'sesion',
                     'sesion' => $s,
                 ];
@@ -190,27 +260,18 @@ class AsistenciaService
      *  TOGGLE CLIENTE (entrada/salida)
      * ===========================*/
 
-    /**
-     * Lógica unificada solicitada:
-     * - Salida si hay asistencia abierta (y pasó min_salida_min)
-     * - Sesión (puntual/atrasado), única por sesión
-     * - Si hay sesión hoy pero fuera de horario => acceso_denegado una vez
-     * - Si no hay sesión válida: usa puedeRegistrarAsistenciaHoy()
-     *   * si false => acceso_denegado con motivo
-     *   * si true  => registra plan (siempre 'puntual'), evita duplicado en el día
-     */
     public static function toggleCliente(Clientes $cliente, Carbon $m, string $origen = 'biometrico'): array
     {
-        $fecha          = $m->toDateString();
-        $debounceMin    = (int) (Config::get('maxpower.asistencia_debounce_min', 5));   // anti-rebote general
-        $minSalidaMin   = (int) (Config::get('maxpower.cliente_min_salida_min', 15));   // mínimo para cerrar asistencia
+        $fecha = $m->toDateString();
+        $debounceMin = (int) Config::get('maxpower.asistencia_debounce_min', 5);
+        $minSalidaMin = (int) Config::get('maxpower.cliente_min_salida_min', 15);
 
-        $tolSesA        = (int) (Config::get('maxpower.sesion_tolerancia_antes', 15));  // como tu v1
-        $tolSesD        = (int) (Config::get('maxpower.sesion_tolerancia_despues', 0));
-        $tolPlanA       = (int) (Config::get('maxpower.plan_tolerancia_antes', 0));     // planes sin tolerancia por defecto
-        $tolPlanD       = (int) (Config::get('maxpower.plan_tolerancia_despues', 0));
+        $tolSesA = (int) Config::get('maxpower.sesion_tolerancia_antes', 15);
+        $tolSesD = (int) Config::get('maxpower.sesion_tolerancia_despues', 0);
+        $tolPlanA = (int) Config::get('maxpower.plan_tolerancia_antes', 0);
+        $tolPlanD = (int) Config::get('maxpower.plan_tolerancia_despues', 0);
 
-        // 0) Salida si hay abierta (con anti-rebote y min_salida)
+        // 0) Salida si hay abierta (anti-rebote + mínimo de salida)
         if ($abierta = self::abiertaDeCliente($cliente)) {
             $mins = Carbon::parse($abierta->hora_entrada)->diffInMinutes($m);
             if ($mins < $debounceMin) {
@@ -223,7 +284,23 @@ class AsistenciaService
             return [true, 'Salida registrada.'];
         }
 
-        // 1) Sesiones de hoy: si cae en ventana => registrar, única por sesión
+        // A) Permiso aprobado hoy (bloqueo duro)
+        $permitePermiso = false; // o, si prefieres por config, asegúrate: config('maxpower.permiso_cliente_permite_ingreso') === false
+
+        if (self::clienteTienePermisoAprobadoHoy($cliente, $m)) {
+            self::registrarDenegadoUnaVez(
+                'plan',
+                $cliente->id,
+                Clientes::class,
+                $fecha,
+                $m,
+                $origen,
+                'Tiene permiso aprobado: hoy no corresponde ingreso'
+            );
+            return [false, 'Acceso denegado por permiso (bloqueo activo).'];
+        }
+
+        // B) Sesión adicional (única por sesión)
         $sesionesHoy = self::ventanasSesionesDeHoy($cliente, $m);
         foreach ($sesionesHoy as $v) {
             if (self::contieneMomento($v, $m, $tolSesA, $tolSesD)) {
@@ -240,14 +317,14 @@ class AsistenciaService
                 $estado = $m->lte($v['inicio']) ? 'puntual' : 'atrasado';
 
                 Asistencia::create([
-                    'asistible_id'        => $cliente->id,
-                    'asistible_type'      => Clientes::class,
-                    'tipo_asistencia'     => 'sesion',
+                    'asistible_id' => $cliente->id,
+                    'asistible_type' => Clientes::class,
+                    'tipo_asistencia' => 'sesion',
                     'sesion_adicional_id' => $sesion->id,
-                    'fecha'               => $fecha,
-                    'hora_entrada'        => $m,
-                    'estado'              => $estado,
-                    'origen'              => $origen,
+                    'fecha' => $fecha,
+                    'hora_entrada' => $m,
+                    'estado' => $estado,
+                    'origen' => $origen,
                     'usuario_registro_id' => auth()->id(),
                 ]);
 
@@ -255,7 +332,7 @@ class AsistenciaService
             }
         }
 
-        // 2) Si hay sesión hoy pero fuera de horario => denegado (una vez)
+        // Tiene sesión hoy pero fuera de ventana → denegado
         if (!empty($sesionesHoy)) {
             self::registrarDenegadoUnaVez(
                 'sesion',
@@ -269,10 +346,9 @@ class AsistenciaService
             return [false, 'Sesión fuera de horario.'];
         }
 
-        // 3) Sin sesión válida: validar plan via puedeRegistrarAsistenciaHoy()
-        [$puede, $mensaje] = $cliente->puedeRegistrarAsistenciaHoy();
-
-        if (!$puede) {
+        // C) Validaciones del plan (vigencia + deuda + día/horario)
+        $pc = self::planVigenteHoy($cliente, $m);
+        if (!$pc) {
             self::registrarDenegadoUnaVez(
                 'plan',
                 $cliente->id,
@@ -280,12 +356,26 @@ class AsistenciaService
                 $fecha,
                 $m,
                 $origen,
-                $mensaje ?: 'No autorizado por plan'
+                'Sin plan vigente en esta fecha'
             );
-            return [false, $mensaje ?: 'Acceso denegado (plan).'];
+            return [false, 'No tiene plan vigente.'];
         }
 
-        // 3.a) Validar ventanas del plan (día/horario) como en v2
+        // Deuda con gracia de N días
+        if (self::clienteEstaEnDeuda($cliente) && !self::clienteDentroGraciaDeuda($pc, $m)) {
+            self::registrarDenegadoUnaVez(
+                'plan',
+                $cliente->id,
+                Clientes::class,
+                $fecha,
+                $m,
+                $origen,
+                'Plan en deuda y fuera del periodo de gracia'
+            );
+            return [false, 'Deuda fuera del periodo de gracia.'];
+        }
+
+        // Día permitido + ventanas horario
         $ventanasPlan = self::ventanasPlanParaDia($cliente, $m);
         if (empty($ventanasPlan)) {
             self::registrarDenegadoUnaVez(
@@ -299,42 +389,50 @@ class AsistenciaService
             );
             return [false, 'Plan sin horario hoy o día no permitido.'];
         }
-        $ok = null;
-        foreach ($ventanasPlan as $v) {
-            if (self::contieneMomento($v, $m, $tolPlanA, $tolPlanD)) { $ok = $v; break; }
-        }
-        if (!$ok) {
-            self::registrarDenegadoUnaVez(
-                'plan',
-                $cliente->id,
-                Clientes::class,
-                $fecha,
-                $m,
-                $origen,
-                'Fuera de ventana del plan'
-            );
-            return [false, 'Fuera de horario del plan.'];
+
+        $pc = $pc ?? self::planVigenteHoy($cliente, $m);
+
+        // --- Política de ingresos diarios ---
+        $ilimitadoPlan = (bool) data_get($pc?->plan, 'ingresos_ilimitados', false);
+
+        // Si tu tabla `plans` tiene un campo entero para “varios ingresos por día”
+        $maxPorDiaPlan = (int) data_get($pc?->plan, 'max_ingresos_diarios', 0);
+        // 0 o null => usar default del sistema
+
+        // Fallback por config (opcional)
+        $ilimitadoCfg = (bool) config('maxpower.plan_ingresos_ilimitados', false);
+        $defaultMaxCfg = (int) config('maxpower.plan_max_ingresos_diarios_por_defecto', 1);
+
+        // Resultado efectivo
+        $ilimitado = $ilimitadoPlan || $ilimitadoCfg;
+        $maxPorDia = $ilimitado ? null : ($maxPorDiaPlan > 0 ? $maxPorDiaPlan : $defaultMaxCfg);
+
+        if (!$ilimitado) {
+            // Solo cuentan ingresos válidos; no cuentes 'acceso_denegado'
+            $estadosValidos = ['puntual', 'atrasado', 'permiso']; // ajusta si 'permiso' no debe contar
+            $ingresosHoy = Asistencia::whereDate('fecha', $fecha)
+                ->where('asistible_id', $cliente->id)
+                ->where('asistible_type', Clientes::class)
+                ->where('tipo_asistencia', 'plan')
+                ->whereIn('estado', $estadosValidos)
+                ->count();
+
+            if ($ingresosHoy >= $maxPorDia) {
+                return [false, "Límite diario alcanzado ({$maxPorDia})."];
+            }
         }
 
-        // 3.b) Evitar duplicado por plan el mismo día
-        $yaPlanHoy = Asistencia::whereDate('fecha', $fecha)
-            ->where('asistible_id', $cliente->id)
-            ->where('asistible_type', Clientes::class)
-            ->where('tipo_asistencia', 'plan')
-            ->exists();
-        if ($yaPlanHoy) {
-            return [false, 'Asistencia por plan ya registrada hoy.'];
-        }
+        // Reglas:
 
-        // 4) Registrar por plan: **siempre puntual** (requisito v1)
+        // Registrar por plan (siempre puntual)
         Asistencia::create([
-            'asistible_id'        => $cliente->id,
-            'asistible_type'      => Clientes::class,
-            'tipo_asistencia'     => 'plan',
-            'fecha'               => $fecha,
-            'hora_entrada'        => $m,
-            'estado'              => 'puntual',
-            'origen'              => $origen,
+            'asistible_id' => $cliente->id,
+            'asistible_type' => Clientes::class,
+            'tipo_asistencia' => 'plan',
+            'fecha' => $fecha,
+            'hora_entrada' => $m,
+            'estado' => 'puntual',
+            'origen' => $origen,
             'usuario_registro_id' => auth()->id(),
         ]);
 
@@ -347,11 +445,11 @@ class AsistenciaService
 
     public static function togglePersonal(Personal $p, Carbon $m, string $origen = 'biometrico'): array
     {
-        $fecha        = $m->toDateString();
-        $debounceMin  = (int) (Config::get('maxpower.asistencia_debounce_min', 5));
-        $minSalidaMin = (int) (Config::get('maxpower.personal_min_salida_min', 15));
-        $tolAntes     = (int) (Config::get('maxpower.personal_tolerancia_antes', 60));
-        $tolDesp      = (int) (Config::get('maxpower.personal_tolerancia_despues', 0));
+        $fecha = $m->toDateString();
+        $debounceMin = (int) Config::get('maxpower.asistencia_debounce_min', 5);
+        $minSalidaMin = (int) Config::get('maxpower.personal_min_salida_min', 15);
+        $tolAntes = (int) Config::get('maxpower.personal_tolerancia_antes', 60);
+        $tolDesp = (int) Config::get('maxpower.personal_tolerancia_despues', 0);
 
         // ¿Salida?
         if ($abierta = self::abiertaDePersonal($p)) {
@@ -366,6 +464,26 @@ class AsistenciaService
             return [true, 'Salida registrada.'];
         }
 
+        // Permiso aprobado hoy => registrar como 'permiso' sin exigir turno
+        if (
+            method_exists($p, 'permisos') && $p->permisos()
+                ->whereDate('fecha', $fecha)->where('estado', 'aprobado')->exists()
+        ) {
+
+            Asistencia::create([
+                'asistible_id' => $p->id,
+                'asistible_type' => Personal::class,
+                'tipo_asistencia' => 'personal',
+                'fecha' => $fecha,
+                'hora_entrada' => $m,
+                'estado' => 'permiso',
+                'origen' => $origen,
+                'usuario_registro_id' => auth()->id(),
+            ]);
+
+            return [true, 'Asistencia registrada como permiso.'];
+        }
+
         // Entrada dentro de turno del día
         $dowName = $m->locale('es')->isoFormat('dddd'); // "lunes", etc.
         $turnos = $p->turnos()->where('dia', $dowName)->where('estado', 'activo')->get();
@@ -378,13 +496,13 @@ class AsistenciaService
                 $estado = $m->lte(Carbon::createFromTimeString($t->hora_inicio)) ? 'puntual' : 'atrasado';
 
                 Asistencia::create([
-                    'asistible_id'        => $p->id,
-                    'asistible_type'      => Personal::class,
-                    'tipo_asistencia'     => 'personal',
-                    'fecha'               => $fecha,
-                    'hora_entrada'        => $m,
-                    'estado'              => $estado,
-                    'origen'              => $origen,
+                    'asistible_id' => $p->id,
+                    'asistible_type' => Personal::class,
+                    'tipo_asistencia' => 'personal',
+                    'fecha' => $fecha,
+                    'hora_entrada' => $m,
+                    'estado' => $estado,
+                    'origen' => $origen,
                     'usuario_registro_id' => auth()->id(),
                 ]);
 
@@ -406,11 +524,12 @@ class AsistenciaService
     }
 
     /* ==========================================
-     *  Fin programado (para UX de “tiempo restante”)
+     *  Fin programado (para UX “tiempo restante”)
      * ==========================================*/
     public static function finProgramadoPara(Asistencia $a): ?Carbon
     {
-        if (!$a->hora_entrada) return null;
+        if (!$a->hora_entrada)
+            return null;
 
         if ($a->tipo_asistencia === 'sesion' && $a->sesionAdicional?->hora_fin) {
             $gracia = (int) Config::get('maxpower.sesion_tolerancia_despues', 0);
@@ -424,7 +543,7 @@ class AsistenciaService
 
             foreach ($ventanas as $v) {
                 if ($m->between($v['inicio'], $v['fin'])) {
-                    return $v->fin->copy()->addMinutes($gracia);
+                    return $v['fin']->copy()->addMinutes($gracia);
                 }
             }
         }

@@ -20,6 +20,8 @@ use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\PlanClienteResource\RelationManagers\SesionesAdicionalesRelationManager;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Support\Exceptions\Halt;
+use App\Models\Asistencia;
 
 
 class PlanClienteResource extends Resource
@@ -78,12 +80,12 @@ class PlanClienteResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -101,64 +103,46 @@ class PlanClienteResource extends Resource
         $calcularFechaFinal = function (callable $get, callable $set) {
             $plan = \App\Models\Plan::find($get('plan_id'));
             $fechaInicio = $get('fecha_inicio') ? Carbon::parse($get('fecha_inicio')) : null;
-            $diasPermitidos = (array) $get('dias_permitidos');
+            // ahora tratamos SIEMPRE como índices numéricos 0..6
+            $diasPermitidos = array_map('intval', (array) $get('dias_permitidos'));
 
             if (!$plan || !$fechaInicio || $fechaInicio->year < 2020) {
                 $set('fecha_final', null);
                 return;
             }
 
-            $duracion = $plan->duracion_dias ?? 0;
+            $duracion = (int) ($plan->duracion_dias ?? 0);
 
+            // todos los días marcados -> rango corrido
             if (count($diasPermitidos) === 7) {
-                $fechaFinal = $fechaInicio->copy()->addDays($duracion - 1);
-                $set('fecha_final', $fechaFinal->toDateString());
+                $set('fecha_final', $fechaInicio->copy()->addDays(max($duracion - 1, 0))->toDateString());
                 return;
             }
 
+            // días específicos -> contar solo días permitidos
             if (!empty($diasPermitidos)) {
-                $diasPermitidosIndices = collect($diasPermitidos)->map(function ($dia) {
-                    return match ($dia) {
-                        'lunes' => 1,
-                        'martes' => 2,
-                        'miercoles' => 3,
-                        'jueves' => 4,
-                        'viernes' => 5,
-                        'sabado' => 6,
-                        'domingo' => 0,
-                        default => null,
-                    };
-                })->filter()->toArray();
-
-                if (empty($diasPermitidosIndices)) {
-                    Notification::make()
-                        ->title('⚠️ Días inválidos')
-                        ->body('No se pudo calcular la fecha final. Verifica los días seleccionados.')
-                        ->warning()
-                        ->send();
-                    $set('fecha_final', null);
-                    return;
-                }
+                $permitidos = collect($diasPermitidos)->map(fn($d) => (int) $d)->unique()->all();
 
                 $diasContados = 0;
                 $fecha = $fechaInicio->copy();
-                $limiteMaximo = 365;
+                $guard = 730; // límite de seguridad
 
-                while ($diasContados < $duracion && $limiteMaximo > 0) {
-                    if (in_array($fecha->dayOfWeek, $diasPermitidosIndices)) {
+                while ($diasContados < $duracion && $guard > 0) {
+                    if (in_array($fecha->dayOfWeek, $permitidos, true)) {
                         $diasContados++;
                     }
-                    $fecha->addDay();
-                    $limiteMaximo--;
+                    if ($diasContados < $duracion) {
+                        $fecha->addDay();
+                    }
+                    $guard--;
                 }
 
-                $fechaFinal = $fecha->subDay();
-                $set('fecha_final', $fechaFinal->toDateString());
+                $set('fecha_final', $fecha->toDateString());
                 return;
             }
 
-            $fechaFinal = $fechaInicio->copy()->addDays($duracion - 1);
-            $set('fecha_final', $fechaFinal->toDateString());
+            // sin selección -> rango corrido
+            $set('fecha_final', $fechaInicio->copy()->addDays(max($duracion - 1, 0))->toDateString());
         };
 
 
@@ -210,6 +194,23 @@ class PlanClienteResource extends Resource
                             $set('tipo_asistencia', $tipoAsistencia);
 
                             $actualizarMontos($get, $set);
+                        })
+                        ->afterStateHydrated(function ($state, callable $get, callable $set) use ($actualizarMontos) {
+                            $disciplinaId = $get('disciplina_id');
+                            if ($state && $disciplinaId) {
+                                $precio = PlanDisciplina::where('plan_id', $state)
+                                    ->where('disciplina_id', $disciplinaId)
+                                    ->value('precio');
+
+                                if ($precio !== null) {
+                                    // Solo corrige si está vacío o en 0 para no pisar ediciones válidas
+                                    $precioActual = (float) ($get('precio_plan') ?? 0);
+                                    if ($precioActual <= 0) {
+                                        $set('precio_plan', $precio);
+                                        $actualizarMontos($get, $set);
+                                    }
+                                }
+                            }
                         }),
 
                     Select::make('disciplina_id')
@@ -239,30 +240,48 @@ class PlanClienteResource extends Resource
                             }
 
                             $actualizarMontos($get, $set);
+                        })
+                        ->afterStateHydrated(function ($state, callable $get, callable $set) use ($actualizarMontos) {
+                            $planId = $get('plan_id');
+                            if ($planId && $state) {
+                                $precio = PlanDisciplina::where('plan_id', $planId)
+                                    ->where('disciplina_id', $state)
+                                    ->value('precio');
+
+                                if ($precio !== null) {
+                                    $precioActual = (float) ($get('precio_plan') ?? 0);
+                                    if ($precioActual <= 0) {
+                                        $set('precio_plan', $precio);
+                                        $actualizarMontos($get, $set);
+                                    }
+                                }
+                            }
                         }),
 
                     CheckboxList::make('dias_permitidos')
                         ->label('Días permitidos para asistir')
                         ->options([
-                            'lunes' => 'Lunes',
-                            'martes' => 'Martes',
-                            'miercoles' => 'Miércoles',
-                            'jueves' => 'Jueves',
-                            'viernes' => 'Viernes',
-                            'sabado' => 'Sábado',
-                            'domingo' => 'Domingo',
+                            1 => 'Lunes',
+                            2 => 'Martes',
+                            3 => 'Miércoles',
+                            4 => 'Jueves',
+                            5 => 'Viernes',
+                            6 => 'Sábado',
+                            0 => 'Domingo',
                         ])
                         ->columns(3)
                         ->required()
+                        // 👇 NUEVO: normaliza a enteros al hidratar
+                        ->afterStateHydrated(function ($component, $state) {
+                            $component->state(array_map('intval', (array) $state));
+                        })
                         ->afterStateUpdated(function ($state, callable $set, callable $get) use ($calcularFechaFinal) {
                             $fecha = $get('fecha_inicio');
-
                             try {
                                 $carbonFecha = Carbon::parse($fecha);
                                 if ($carbonFecha->year < 2020) {
                                     throw new \Exception('Fecha inválida');
                                 }
-
                                 $calcularFechaFinal($get, $set);
                             } catch (\Exception $e) {
                                 Notification::make()
@@ -270,7 +289,6 @@ class PlanClienteResource extends Resource
                                     ->body('Seleccione primero una fecha de inicio válida para calcular la fecha final.')
                                     ->warning()
                                     ->send();
-
                                 $set('fecha_final', null);
                             }
                         })
@@ -334,7 +352,8 @@ class PlanClienteResource extends Resource
                         ->afterStateUpdated(function ($state, callable $set, callable $get) use ($actualizarMontos) {
                             $actualizarMontos($get, $set);
                         })
-                        ->disabled(),
+                        ->disabled()
+                        ->dehydrated(false),
 
                     TextInput::make('a_cuenta')
                         ->label('A cuenta')
@@ -367,23 +386,27 @@ class PlanClienteResource extends Resource
                     TextInput::make('total')
                         ->label('Total')
                         ->readOnly()
-                        ->disabled(),
+                        ->disabled()
+                        ->dehydrated(false),
 
                     TextInput::make('saldo')
                         ->label('Saldo')
                         ->readOnly()
-                        ->disabled(),
+                        ->disabled()
+                        ->dehydrated(false),
 
                     Select::make('estado')
                         ->label('Estado del plan')
                         ->options([
                             'vigente' => 'Vigente',
+                            'deuda' => 'Con deuda',
                             'vencido' => 'Vencido',
                             'bloqueado' => 'Bloqueado por deuda',
                         ])
-                        ->default('vigente')
+                        //->default('vigente')
                         ->required()
                         ->native(false)
+                        ->dehydrated(false)
                         ->columnSpanFull(),
                 ]),
 
@@ -414,11 +437,24 @@ class PlanClienteResource extends Resource
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $precio = floatval($data['precio_plan'] ?? 0);
-        $cuenta = floatval($data['a_cuenta'] ?? 0);
+        // 1) Recalcular precio desde PlanDisciplina (por si el form no lo setea)
+        if (!empty($data['plan_id']) && !empty($data['disciplina_id'])) {
+            $precio = PlanDisciplina::where('plan_id', $data['plan_id'])
+                ->where('disciplina_id', $data['disciplina_id'])
+                ->value('precio');
 
+            if ($precio !== null) {
+                $data['precio_plan'] = (float) $precio;
+            }
+        }
+
+        // 2) Calcular totales y estado
+        $precio = (float) ($data['precio_plan'] ?? 0);
+        $cuenta = (float) ($data['a_cuenta'] ?? 0);
+
+        // (ya validas que a_cuenta no supere precio en el form)
         $data['total'] = $precio;
-        $data['saldo'] = $precio - $cuenta;
+        $data['saldo'] = max($precio - $cuenta, 0);
         $data['estado'] = $data['saldo'] <= 0 ? 'vigente' : 'deuda';
 
         return $data;
@@ -520,6 +556,7 @@ class PlanClienteResource extends Resource
                     ->label('Estado del plan')
                     ->options([
                         'vigente' => 'Vigente',
+                        'deuda' => 'Con deuda',
                         'vencido' => 'Vencido',
                         'bloqueado' => 'Bloqueado por deuda',
                     ]),
@@ -538,7 +575,66 @@ class PlanClienteResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este plan'),
-                Tables\Actions\DeleteAction::make()->tooltip('Eliminar este plan'),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin') === true)
+                    ->before(function ($record) {
+                        // 1) Tiene sesiones adicionales
+                        if ($record->sesionesAdicionales()->exists()) {
+                            Notification::make()
+                                ->title('No puedes eliminar este plan')
+                                ->body('El plan tiene sesiones adicionales y/o asistencias vinculadas.')
+                                ->danger()->send();
+                            throw new Halt();
+                        }
+
+                        // 2) Tiene asistencias por sesión de este plan
+                        $idsSesiones = $record->sesionesAdicionales()->pluck('id');
+                        if ($idsSesiones->isNotEmpty()) {
+                            $hayAsist = Asistencia::whereIn('sesion_adicional_id', $idsSesiones)->exists();
+                            if ($hayAsist) {
+                                Notification::make()
+                                    ->title('No puedes eliminar este plan')
+                                    ->body('Hay asistencias vinculadas a sesiones de este plan.')
+                                    ->danger()->send();
+                                throw new Halt();
+                            }
+                        }
+
+                        // 3) (Opcional) Bloquear si hay asistencias por "plan" del cliente en el rango del plan
+                        $hayAsistPlan = Asistencia::where('asistible_type', Clientes::class)
+                            ->where('asistible_id', $record->cliente_id)
+                            ->where('tipo_asistencia', 'plan')
+                            ->whereBetween('fecha', [$record->fecha_inicio, $record->fecha_final])
+                            ->exists();
+
+                        if ($hayAsistPlan) {
+                            Notification::make()
+                                ->title('No puedes eliminar este plan')
+                                ->body('Hay asistencias del cliente registradas durante la vigencia del plan.')
+                                ->danger()->send();
+                            throw new Halt();
+                        }
+                    }),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->visible(fn() => auth()->user()?->hasRole('admin') === true)
+                        ->before(function ($records) {
+                            foreach ($records as $record) {
+                                if ($record->sesionesAdicionales()->exists()) {
+                                    throw new Halt();
+                                }
+                                $idsSesiones = $record->sesionesAdicionales()->pluck('id');
+                                if (
+                                    $idsSesiones->isNotEmpty() &&
+                                    Asistencia::whereIn('sesion_adicional_id', $idsSesiones)->exists()
+                                ) {
+                                    throw new Halt();
+                                }
+                            }
+                        }),
+                ]),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('reporteDiario')

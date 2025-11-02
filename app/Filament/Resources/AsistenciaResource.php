@@ -103,8 +103,7 @@ class AsistenciaResource extends Resource
                     ->getStateUsing(
                         fn($record) =>
                         $record->asistible?->nombre_completo ?? '—'
-                    )
-                    ->searchable(isIndividual: false),
+                    ),
 
                 TextColumn::make('ci')
                     ->label('CI')
