@@ -40,4 +40,11 @@ class Disciplina extends Model
         return $this->belongsTo(User::class, 'modificado_por');
     }
 
+    public function instructores()
+    {
+        return $this->belongsToMany(\App\Models\Personal::class, 'personal_disciplina')
+            ->withPivot(['nivel', 'activo'])
+            ->withTimestamps();
+    }
+
 }

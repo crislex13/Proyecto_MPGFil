@@ -22,6 +22,10 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
 use Carbon\Carbon;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
+use Filament\Forms\Components\TimePicker;
+use Illuminate\Support\Str;
 
 
 class SesionAdicionalResource extends Resource
@@ -102,44 +106,110 @@ class SesionAdicionalResource extends Resource
                         ->required()
                         ->placeholder('Seleccione al cliente para esta sesión'),
 
-                    Select::make('instructor_id')
-                        ->label('Instructor')
-                        ->options(Personal::all()->pluck('nombre_completo', 'id'))
+                    // NUEVO: Disciplina (reemplaza tipo_sesion)
+                    Select::make('disciplina_id')
+                        ->label('Disciplina')
+                        ->relationship('disciplina', 'nombre')
                         ->searchable()
+                        ->preload()
                         ->required()
-                        ->placeholder('Seleccione el instructor responsable')
                         ->reactive(),
 
-                    Select::make('turno_id')
-                        ->label('Turno asignado')
-                        ->options(function (callable $get) {
-                            $instructorId = $get('instructor_id');
+                    // MODIFICADO: Instructor filtrado por disciplina
+                    Select::make('instructor_id')
+                        ->label('Instructor')
+                        ->options(function (Get $get) {
+                            $disciplinaId = $get('disciplina_id');
 
-                            if (!$instructorId)
-                                return [];
-
-                            return Turno::where('personal_id', $instructorId)
-                                ->where('estado', 'activo')
+                            return Personal::query()
+                                // solo instructores (case-insensitive)
+                                ->whereRaw('LOWER(cargo) = "instructor"')
+                                // si hay disciplina, filtra por la relación
+                                ->when(
+                                    $disciplinaId,
+                                    fn($q) =>
+                                    $q->whereHas('disciplinas', fn($qq) => $qq->where('disciplinas.id', $disciplinaId))
+                                )
+                                ->orderBy('apellido_paterno')
                                 ->get()
-                                ->pluck('display_horario', 'id');
+                                ->mapWithKeys(fn($p) => [$p->id => $p->nombre_completo]);
                         })
                         ->searchable()
                         ->required()
-                        ->placeholder('Seleccione un turno activo')
-                        ->disabled(fn(callable $get) => !$get('instructor_id'))
-                        ->reactive(),
-
-                    TextInput::make('tipo_sesion')
-                        ->label('Tipo de sesión')
-                        ->required()
-                        ->placeholder('Ej: Zumba, Crossfit, Yoga'),
+                        ->placeholder('Seleccione el instructor responsable')
+                        ->preload()
+                        ->reactive()
+                        ->afterStateUpdated(fn(Set $set) => $set('turno_id', null)),
 
                     DatePicker::make('fecha')
                         ->label('Fecha de la sesión')
                         ->required()
-                        ->minDate(Carbon::create(2020, 1, 1))
-                        ->maxDate(now())
-                        ->placeholder('Seleccione la fecha'),
+                        // ventana de selección: -6 meses … +6 meses
+                        ->minDate(now()->subMonthsNoOverflow(6)->startOfDay())
+                        ->maxDate(now()->addMonthsNoOverflow(6)->endOfDay())
+                        ->placeholder('Seleccione la fecha')
+                        ->reactive()
+                        ->afterStateUpdated(fn(Set $set) => $set('turno_id', null))
+                        ->validationMessages([
+                            'required' => 'La fecha es obligatoria.',
+                            'after_or_equal' => 'La fecha no puede ser anterior a hace 6 meses.',
+                            'before_or_equal' => 'La fecha no puede ser posterior a dentro de 6 meses.',
+                        ]),
+
+
+                    // MODIFICADO: Turno filtrado por instructor (+ día según fecha)
+                    Select::make('turno_id')
+                        ->label('Turno asignado')
+                        ->options(function (Get $get) {
+                            $instructorId = $get('instructor_id');
+                            $fecha = $get('fecha');
+
+                            if (!$instructorId) {
+                                return [];
+                            }
+
+                            $q = Turno::query()
+                                ->where('personal_id', $instructorId)
+                                ->where('estado', 'activo');
+
+                            if ($fecha) {
+                                $dow = Carbon::parse($fecha)->isoWeekday(); // 1..7
+                                $q->where('dia', (int) $dow);
+                            }
+
+                            // Usamos un display claro: "Lunes 08:00–09:00 (Mañana)"
+                            $map = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+
+                            return $q->get()->mapWithKeys(function ($t) use ($map) {
+                                $dia = $map[(int) $t->dia] ?? $t->dia;
+                                $label = "{$dia} {$t->hora_inicio}–{$t->hora_fin} ({$t->nombre})";
+                                return [$t->id => $label];
+                            });
+                        })
+                        ->searchable()
+                        ->required()
+                        ->placeholder('Seleccione un turno activo')
+                        ->disabled(fn(Get $get) => !$get('instructor_id'))
+                        ->preload()
+                        ->reactive()
+                        ->afterStateUpdated(function ($state, Set $set) {
+                            if (!$state)
+                                return;
+                            $turno = Turno::find($state);
+                            if ($turno) {
+                                $set('hora_inicio', $turno->hora_inicio);
+                                $set('hora_fin', $turno->hora_fin);
+                            }
+                        }),
+
+                    TimePicker::make('hora_inicio')
+                        ->label('Hora inicio (opcional)')
+                        ->seconds(false),
+
+                    TimePicker::make('hora_fin')
+                        ->label('Hora fin (opcional)')
+                        ->seconds(false)
+                        ->after('hora_inicio'),
 
                     TextInput::make('precio')
                         ->label('Precio (Bs.)')
@@ -153,10 +223,9 @@ class SesionAdicionalResource extends Resource
         ]);
     }
 
-    public static function getEloquentQuery(): EloquentBuilder
+    public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with(['turno', 'instructor', 'planCliente.cliente']);
+        return parent::getEloquentQuery()->with(['disciplina', 'turno', 'instructor', 'planCliente.cliente']);
     }
 
     public static function table(Table $table): Table
@@ -207,10 +276,11 @@ class SesionAdicionalResource extends Resource
                     ->icon('heroicon-o-clock')
                     ->sortable(),
 
-                TextColumn::make('tipo_sesion')
-                    ->label('Tipo')
+                TextColumn::make('disciplina.nombre')
+                    ->label('Disciplina')
                     ->icon('heroicon-o-rectangle-group')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
 
                 TextColumn::make('fecha')
                     ->label('Fecha')
@@ -245,6 +315,11 @@ class SesionAdicionalResource extends Resource
                             ->when($data['desde'], fn($q) => $q->whereDate('fecha', '>=', $data['desde']))
                             ->when($data['hasta'], fn($q) => $q->whereDate('fecha', '<=', $data['hasta']));
                     }),
+
+                Tables\Filters\SelectFilter::make('disciplina_id')
+                    ->label('Disciplina')
+                    ->relationship('disciplina', 'nombre')
+                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

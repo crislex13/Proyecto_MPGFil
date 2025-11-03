@@ -8,6 +8,7 @@ use App\Models\Personal;
 use App\Models\PlanCliente;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Config;
+use App\Models\SesionAdicional;
 
 class AsistenciaService
 {
@@ -249,6 +250,47 @@ class AsistenciaService
         return $out;
     }
 
+    /* ================================
+     *  Ingreso directo por SESIÓN
+     * ================================*/
+    protected function intentarIngresoPorSesion(Clientes $cliente): array
+    {
+        $ahora = now();
+
+        $sesion = SesionAdicional::with(['turno', 'disciplina', 'instructor'])
+            ->activaEn($cliente->id, $ahora)
+            ->first();
+
+        if (!$sesion) {
+            return $this->denegar('No tiene una sesión activa en este horario.');
+        }
+
+        if (!$this->pasaAntireboteCliente($cliente, $ahora)) {
+            return $this->denegar('Espere el tiempo mínimo para volver a marcar.');
+        }
+
+        $estadoLlegada = $ahora->lte(Carbon::createFromTimeString($sesion->hora_inicio))
+            ? 'puntual' : 'atrasado';
+
+        $asistencia = $this->registrarAsistenciaCliente(
+            cliente: $cliente,
+            fecha: $ahora->toDateString(),
+            horaEntrada: $ahora->format('H:i:s'),
+            contexto: [
+                'tipo' => 'sesion',
+                'sesion_id' => $sesion->id,
+                'disciplina_id' => $sesion->disciplina_id,
+                'instructor_id' => $sesion->instructor_id,
+                'turno_id' => $sesion->turno_id,
+                'estado_llegada' => $estadoLlegada,
+            ]
+        );
+
+        return $this->ok("Asistencia registrada a sesión ({$estadoLlegada}).", [
+            'asistencia_id' => $asistencia->id,
+        ]);
+    }
+
     public static function contieneMomento(array $v, Carbon $m, int $tolAntes = 0, int $tolDespues = 0): bool
     {
         $ini = $v['inicio']->copy()->subMinutes($tolAntes);
@@ -488,10 +530,9 @@ class AsistenciaService
 
         // Permiso aprobado hoy => registrar como 'permiso' sin exigir turno
         if (
-            method_exists($p, 'permisos') && $p->permisos()
-                ->whereDate('fecha', $fecha)->where('estado', 'aprobado')->exists()
+            method_exists($p, 'permisos') &&
+            $p->permisos()->where('estado', 'aprobado')->vigenteEn($fecha)->exists()
         ) {
-
             Asistencia::create([
                 'asistible_id' => $p->id,
                 'asistible_type' => Personal::class,
@@ -502,13 +543,12 @@ class AsistenciaService
                 'origen' => $origen,
                 'usuario_registro_id' => auth()->id(),
             ]);
-
             return [true, 'Asistencia registrada como permiso.'];
         }
 
         // Entrada dentro de turno del día
-        $dowName = $m->locale('es')->isoFormat('dddd'); // "lunes", etc.
-        $turnos = $p->turnos()->where('dia', $dowName)->where('estado', 'activo')->get();
+        $dow = $m->isoWeekday(); // 1..7
+        $turnos = $p->turnos()->where('dia', $dow)->where('estado', 'activo')->get();
 
         foreach ($turnos as $t) {
             $ini = Carbon::createFromTimeString($t->hora_inicio)->subMinutes($tolAntes);
@@ -579,5 +619,81 @@ class AsistenciaService
         }
 
         return null;
+    }
+
+    /* ======================
+     *  Helpers de respuesta
+     * ======================*/
+    protected function ok(string $msg, array $data = []): array
+    {
+        return [true, $msg, $data];
+    }
+
+    protected function denegar(string $msg): array
+    {
+        return [false, $msg];
+    }
+
+    /* ==================================
+     *  Anti-rebote (cliente) reutilizable
+     * ==================================*/
+    protected function pasaAntireboteCliente(Clientes $cliente, Carbon $momento): bool
+    {
+        $debounceMin = (int) config('maxpower.asistencia_debounce_min', 5);
+
+        if ($abierta = self::abiertaDeCliente($cliente)) {
+            // Ya tiene una asistencia abierta → no permitir otra entrada
+            return false;
+        }
+
+        // Revisa la última entrada de hoy para evitar spam de entradas seguidas
+        $ultima = \App\Models\Asistencia::whereDate('fecha', $momento->toDateString())
+            ->where('asistible_id', $cliente->id)
+            ->where('asistible_type', Clientes::class)
+            ->latest('hora_entrada')
+            ->first();
+
+        if ($ultima) {
+            $mins = Carbon::parse($ultima->hora_entrada)->diffInMinutes($momento);
+            if ($mins < $debounceMin)
+                return false;
+        }
+
+        return true;
+    }
+
+    /* ==========================================
+     *  Registro de asistencia (cliente genérico)
+     * ==========================================*/
+    protected function registrarAsistenciaCliente(
+        Clientes $cliente,
+        string $fecha,
+        string $horaEntrada,
+        array $contexto = []
+    ): Asistencia {
+        // Tipo por defecto: plan | sesión (acá viene 'sesion')
+        $tipo = $contexto['tipo'] ?? 'plan';
+
+        $payload = [
+            'asistible_id' => $cliente->id,
+            'asistible_type' => Clientes::class,
+            'tipo_asistencia' => $tipo,
+            'fecha' => $fecha,
+            'hora_entrada' => $horaEntrada,
+            'estado' => $contexto['estado_llegada'] ?? 'puntual',
+            'origen' => $contexto['origen'] ?? 'biometrico',
+            'usuario_registro_id' => auth()->id(),
+        ];
+
+        // Campos específicos cuando es sesión
+        if ($tipo === 'sesion') {
+            $payload['sesion_adicional_id'] = $contexto['sesion_id'] ?? null;
+            // Si deseas guardar referencias extra (no obligatorias)
+            $payload['disciplina_id'] = $contexto['disciplina_id'] ?? null;
+            $payload['instructor_id'] = $contexto['instructor_id'] ?? null;
+            $payload['turno_id'] = $contexto['turno_id'] ?? null;
+        }
+
+        return Asistencia::create($payload);
     }
 }

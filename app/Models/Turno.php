@@ -21,6 +21,10 @@ class Turno extends Model
         'modificado_por',
     ];
 
+    protected $casts = [
+        'dia' => 'integer',
+    ];
+
     protected static function booted(): void
     {
         static::saving(function ($turno) {
@@ -40,7 +44,7 @@ class Turno extends Model
 
     public function getDisplayHorarioAttribute(): string
     {
-        return "{$this->dia} - {$this->nombre} ({$this->hora_inicio} - {$this->hora_fin})";
+        return "{$this->dia_nombre} - {$this->nombre} ({$this->hora_inicio} - {$this->hora_fin})";
     }
 
     public function personal()
@@ -56,6 +60,11 @@ class Turno extends Model
     public function modificadoPor()
     {
         return $this->belongsTo(User::class, 'modificado_por');
+    }
+
+    public function getDiaNombreAttribute(): string
+    {
+        return [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'][$this->dia] ?? (string) $this->dia;
     }
 
 }

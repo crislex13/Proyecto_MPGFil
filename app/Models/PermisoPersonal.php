@@ -47,4 +47,11 @@ class PermisoPersonal extends Model
             }
         });
     }
+
+    public function scopeVigenteEn($q, $fecha = null)
+    {
+        $fecha = $fecha ? \Carbon\Carbon::parse($fecha)->toDateString() : now()->toDateString();
+        return $q->whereDate('fecha_inicio', '<=', $fecha)
+            ->whereDate('fecha_fin', '>=', $fecha);
+    }
 }

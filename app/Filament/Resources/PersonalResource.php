@@ -24,6 +24,8 @@ use Filament\Tables\Actions\Action;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use App\Filament\Resources\PersonalResource\RelationManagers\PagosRelationManager;
+use Filament\Forms\Get;
+use Filament\Tables\Columns\TagsColumn;
 
 
 class PersonalResource extends Resource
@@ -210,6 +212,15 @@ class PersonalResource extends Resource
                         ->rules(['required'])
                         ->helperText('Este campo también define el rol del usuario generado.'),
 
+                    Select::make('disciplinas')
+                        ->label('Especialidades (disciplinas)')
+                        ->multiple()
+                        ->relationship('disciplinas', 'nombre') // ajusta el campo visible si tu tabla usa otro
+                        ->preload()
+                        ->searchable()
+                        ->visible(fn(Get $get) => $get('cargo') === 'instructor')
+                        ->helperText('Selecciona las clases que imparte este instructor.'),
+
                     TextInput::make('biometrico_id')
                         ->label('ID Biométrico')
                         ->disabled()
@@ -310,6 +321,12 @@ class PersonalResource extends Resource
                     ->icon('heroicon-o-briefcase')
                     ->sortable(),
 
+                TagsColumn::make('disciplinas.nombre')
+                    ->label('Especialidades')
+                    ->limit(3)
+                    ->separator(',')
+                    ->toggleable(),
+
                 TextColumn::make('ci')
                     ->label('C.I.')
                     ->icon('heroicon-o-identification')
@@ -378,6 +395,15 @@ class PersonalResource extends Resource
                         return $query
                             ->when($data['desde'], fn($q) => $q->whereDate('fecha_contratacion', '>=', $data['desde']))
                             ->when($data['hasta'], fn($q) => $q->whereDate('fecha_contratacion', '<=', $data['hasta']));
+                    }),
+
+                Tables\Filters\SelectFilter::make('disciplina')
+                    ->label('Disciplina')
+                    ->options(\App\Models\Disciplina::query()->orderBy('nombre')->pluck('nombre', 'id'))
+                    ->query(function ($query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->whereHas('disciplinas', fn($q) => $q->where('disciplinas.id', $data['value']));
+                        }
                     }),
             ])
             ->actions([

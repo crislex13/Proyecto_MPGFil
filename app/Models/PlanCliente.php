@@ -105,14 +105,14 @@ class PlanCliente extends Model
         });
     }
 
-    public function cliente(): BelongsTo
+    public function cliente()
     {
-        return $this->belongsTo(Clientes::class, 'cliente_id');
+        return $this->belongsTo(\App\Models\Clientes::class, 'cliente_id');
     }
 
-    public function plan(): BelongsTo
+    public function plan()
     {
-        return $this->belongsTo(Plan::class);
+        return $this->belongsTo(\App\Models\Plan::class, 'plan_id');
     }
 
     public function disciplina(): BelongsTo
@@ -122,7 +122,7 @@ class PlanCliente extends Model
 
     public function sesionesAdicionales()
     {
-        return $this->hasMany(\App\Models\SesionAdicional::class);
+        return $this->hasMany(\App\Models\SesionAdicional::class, 'plan_cliente_id');
     }
 
     public function getClienteDisplayNameAttribute()

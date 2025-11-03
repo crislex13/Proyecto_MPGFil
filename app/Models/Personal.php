@@ -57,19 +57,17 @@ class Personal extends Model
     public function turnoHoy(): ?\App\Models\Turno
     {
         $ahora = now();
-        $dia = $ahora->locale('es')->isoFormat('dddd');
+        $dia = $ahora->isoWeekday(); // 1..7
 
-        return Turno::where('personal_id', $this->id)
+        return \App\Models\Turno::where('personal_id', $this->id)
             ->where('dia', $dia)
             ->where('estado', 'activo')
             ->get()
-            ->filter(function ($turno) use ($ahora) {
-                $inicio = Carbon::createFromFormat('H:i:s', $turno->hora_inicio)->subHour(); // 1h antes puede marcar
+            ->first(function ($turno) use ($ahora) {
+                $inicio = Carbon::createFromFormat('H:i:s', $turno->hora_inicio)->subHour();
                 $fin = Carbon::createFromFormat('H:i:s', $turno->hora_fin);
-
                 return $ahora->between($inicio, $fin);
-            })
-            ->first();
+            });
     }
     public function puedeRegistrarEntrada(): array
     {
@@ -161,6 +159,13 @@ class Personal extends Model
     public function pagos()
     {
         return $this->hasMany(\App\Models\PagoPersonal::class, 'personal_id');
+    }
+
+    public function disciplinas()
+    {
+        return $this->belongsToMany(\App\Models\Disciplina::class, 'personal_disciplina')
+            ->withPivot(['nivel', 'activo'])
+            ->withTimestamps();
     }
 
 }

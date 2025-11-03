@@ -121,13 +121,13 @@ class TurnoResource extends Resource
                         ->label('Día de la Semana')
                         ->placeholder('Seleccione un día')
                         ->options([
-                            'lunes' => 'Lunes',
-                            'martes' => 'Martes',
-                            'miércoles' => 'Miércoles',
-                            'jueves' => 'Jueves',
-                            'viernes' => 'Viernes',
-                            'sábado' => 'Sábado',
-                            'domingo' => 'Domingo',
+                            1 => 'Lunes',
+                            2 => 'Martes',
+                            3 => 'Miércoles',
+                            4 => 'Jueves',
+                            5 => 'Viernes',
+                            6 => 'Sábado',
+                            7 => 'Domingo',
                         ])
                         ->required()
                         ->columnSpan(2),
@@ -204,21 +204,6 @@ class TurnoResource extends Resource
 
         return $duracion->format('%h horas %i minutos');
     }
-    protected static function booted(): void
-    {
-        static::saving(function ($turno) {
-            if ($turno->hora_inicio && $turno->hora_fin) {
-                $inicio = Carbon::createFromFormat('H:i:s', $turno->hora_inicio);
-                $fin = Carbon::createFromFormat('H:i:s', $turno->hora_fin);
-
-                if ($fin->greaterThan($inicio)) {
-                    $turno->duracion_minutos = $inicio->diffInMinutes($fin);
-                } else {
-                    $turno->duracion_minutos = null;
-                }
-            }
-        });
-    }
 
     public static function table(Table $table): Table
     {
@@ -237,12 +222,12 @@ class TurnoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                BadgeColumn::make('dia')
+                BadgeColumn::make('dia_nombre') // <- usa el accesor
                     ->label('Día')
                     ->colors([
-                        'gray' => fn($state) => in_array($state, ['lunes', 'martes', 'miércoles', 'jueves', 'viernes']),
-                        'warning' => fn($state) => $state === 'sábado',
-                        'danger' => fn($state) => $state === 'domingo',
+                        'gray' => fn($state) => in_array($state, ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']),
+                        'warning' => fn($state) => $state === 'Sábado',
+                        'danger' => fn($state) => $state === 'Domingo',
                     ])
                     ->sortable(),
 
@@ -307,6 +292,19 @@ class TurnoResource extends Resource
                         'viernes' => 'Viernes',
                         'sábado' => 'Sábado',
                         'domingo' => 'Domingo',
+                    ])
+                    ->placeholder('Todos'),
+
+                Tables\Filters\SelectFilter::make('dia')
+                    ->label('Filtrar por Día')
+                    ->options([
+                        1 => 'Lunes',
+                        2 => 'Martes',
+                        3 => 'Miércoles',
+                        4 => 'Jueves',
+                        5 => 'Viernes',
+                        6 => 'Sábado',
+                        7 => 'Domingo',
                     ])
                     ->placeholder('Todos'),
             ])
