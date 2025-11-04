@@ -235,5 +235,14 @@ class PlanCliente extends Model
 
         return $finBase;
     }
+    public function registradoPor()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'registrado_por');
+    }
+
+    public function modificadoPor()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'modificado_por');
+    }
 
 }

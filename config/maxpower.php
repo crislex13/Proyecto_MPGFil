@@ -38,4 +38,10 @@ return [
     'permiso_cliente_permite_ingreso' => false,  // ⬅️ permiso aprobado HOY BLOQUEA ingreso
     'cliente_min_salida_min' => 15,     // tiempo mínimo para permitir marcar salida
     'plan_max_ingresos_diarios_por_defecto' => 1,
+
+    'bloqueo_deuda' => [
+        'dias' => 5,
+        'habiles' => true,
+    ],
+
 ];

@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\Hidden;
 
+
 class PermisoPersonalResource extends Resource
 {
     protected static ?string $model = PermisoPersonal::class;
@@ -73,12 +74,12 @@ class PermisoPersonalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -146,6 +147,21 @@ class PermisoPersonalResource extends Resource
                         ->label('Motivo del permiso')
                         ->placeholder('Describa brevemente el motivo del permiso')
                         ->rows(3),
+
+                    Section::make('Control de cambios')
+                        ->icon('heroicon-o-user-circle')
+                        ->collapsible()
+                        ->columns(1)
+                        ->visible(fn() => auth()->user()?->hasRole('admin'))
+                        ->schema([
+                            \Filament\Forms\Components\Placeholder::make('registrado_por')
+                                ->label('Registrado por')
+                                ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                            \Filament\Forms\Components\Placeholder::make('modificado_por')
+                                ->label('Modificado por')
+                                ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                        ]),
                 ]),
         ]);
     }
@@ -163,7 +179,11 @@ class PermisoPersonalResource extends Resource
                 TextColumn::make('personal.nombre_completo')
                     ->label('Instructor')
                     ->icon('heroicon-o-user')
-                    ->sortable()
+                    ->sortable(query: function (Builder $query, string $direction) {
+                        $query->leftJoin('personals', 'permisos_personal.personal_id', '=', 'personals.id')
+                            ->orderByRaw("CONCAT(personals.nombre,' ',personals.apellido_paterno,' ',COALESCE(personals.apellido_materno,'')) {$direction}")
+                            ->select('permisos_personal.*');
+                    })
                     ->searchable(['nombre', 'apellido_paterno', 'apellido_materno']),
 
                 TextColumn::make('fecha_inicio')
@@ -208,6 +228,20 @@ class PermisoPersonalResource extends Resource
                     ->limit(40)
                     ->tooltip(fn($record) => $record->motivo)
                     ->searchable(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->defaultSort('fecha_inicio', 'desc')
             ->filters([
@@ -226,10 +260,6 @@ class PermisoPersonalResource extends Resource
                         'parcial' => 'Parcial',
                     ]),
 
-                Tables\Filters\SelectFilter::make('personal_id')
-                    ->label('Instructor')
-                    ->relationship('personal', 'nombre'),
-
                 Tables\Filters\Filter::make('rango_fecha')
                     ->form([
                         Forms\Components\DatePicker::make('desde')->label('Desde'),
@@ -240,17 +270,16 @@ class PermisoPersonalResource extends Resource
                             ->when($data['desde'], fn($q) => $q->whereDate('fecha_inicio', '>=', $data['desde']))
                             ->when($data['hasta'], fn($q) => $q->whereDate('fecha_fin', '<=', $data['hasta']));
                     }),
-
-                Tables\Filters\SelectFilter::make('autorizado_por')
-                    ->label('Autorizado por')
-                    ->relationship('autorizadoPor', 'name'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Permiso eliminado'),
             ])
             ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
             ]);
     }
 

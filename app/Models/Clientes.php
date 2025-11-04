@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use App\Models\Asistencia;
 use App\Models\SesionAdicional;
 use App\Traits\HasAuditoria;
+use Illuminate\Support\Facades\Storage;
 
 class Clientes extends Model
 {

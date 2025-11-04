@@ -22,6 +22,10 @@ use Filament\Tables\Columns\{
 use Filament\Tables;
 use Illuminate\Support\Carbon;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Columns\ImageColumn;
+
 
 class PermisoClienteResource extends Resource
 {
@@ -79,14 +83,13 @@ class PermisoClienteResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
-
 
     public static function form(Form $form): Form
     {
@@ -160,13 +163,40 @@ class PermisoClienteResource extends Resource
                         ->label('Autorizado por')
                         ->content(fn($record) => optional($record?->autorizadoPor)->name ?? 'Aún no autorizado'),
                 ]),
+
+            Section::make('Control de cambios')
+                ->icon('heroicon-o-user-circle')
+                ->collapsible()
+                ->columns(1)
+                ->visible(fn() => auth()->user()?->hasRole('admin'))
+                ->schema([
+                    Placeholder::make('registrado_por')
+                        ->label('Registrado por')
+                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                    Placeholder::make('modificado_por')
+                        ->label('Modificado por')
+                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                ]),
         ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with('cliente');
     }
 
 
     public static function table(Table $table): Table
     {
         return $table->columns([
+
+            ImageColumn::make('cliente.foto_url')
+                ->label('Foto')
+                ->circular()
+                ->height(40)
+                ->width(40),
+
             TextColumn::make('cliente.nombre_completo')
                 ->label('Cliente')
                 ->icon('heroicon-o-user')
@@ -191,6 +221,20 @@ class PermisoClienteResource extends Resource
             TextColumn::make('motivo')
                 ->label('Motivo')
                 ->limit(50),
+
+            TextColumn::make('registradoPor.name')
+                ->label('Registrado por')
+                ->icon('heroicon-o-user-plus')
+                ->toggleable(isToggledHiddenByDefault: true)
+                ->sortable()
+                ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+            TextColumn::make('modificadoPor.name')
+                ->label('Modificado por')
+                ->icon('heroicon-o-pencil-square')
+                ->toggleable(isToggledHiddenByDefault: true)
+                ->sortable()
+                ->visible(fn() => auth()->user()?->hasRole('admin')),
         ])->filters([
                     Tables\Filters\SelectFilter::make('estado')
                         ->label('Estado')
@@ -199,14 +243,13 @@ class PermisoClienteResource extends Resource
                             'aprobado' => 'Aprobado',
                             'rechazado' => 'Rechazado',
                         ]),
-
-                    Tables\Filters\SelectFilter::make('cliente_id')
-                        ->label('Cliente')
-                        ->relationship('cliente', 'nombre_completo')
-                        ->searchable(),
                 ])->actions([
                     Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
+                    Tables\Actions\DeleteAction::make()
+                        ->visible(fn() => auth()->user()?->hasRole('admin'))
+                        ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                        ->requiresConfirmation()
+                        ->successNotificationTitle('Registro eliminado'),
                 ]);
     }
 

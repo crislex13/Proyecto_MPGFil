@@ -84,12 +84,12 @@ class SesionAdicionalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -219,6 +219,21 @@ class SesionAdicionalResource extends Resource
                         ->required()
                         ->helperText('Debe estar entre 0 y 500 Bs.')
                         ->placeholder('Ej: 50.00 Bs'),
+
+                    Section::make('Control de cambios')
+                        ->icon('heroicon-o-user-circle')
+                        ->collapsible()
+                        ->columns(1)
+                        ->visible(fn() => auth()->user()?->hasRole('admin'))
+                        ->schema([
+                            \Filament\Forms\Components\Placeholder::make('registrado_por')
+                                ->label('Registrado por')
+                                ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                            \Filament\Forms\Components\Placeholder::make('modificado_por')
+                                ->label('Modificado por')
+                                ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                        ]),
                 ]),
         ]);
     }
@@ -293,28 +308,22 @@ class SesionAdicionalResource extends Resource
                     ->icon('heroicon-o-currency-dollar')
                     ->money('BOB')
                     ->sortable(),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('cliente_id')
-                    ->label('Cliente')
-                    ->relationship('cliente', 'nombre')
-                    ->searchable(),
-
-                Tables\Filters\SelectFilter::make('instructor_id')
-                    ->label('Instructor')
-                    ->relationship('instructor', 'nombre')
-                    ->searchable(),
-
-                Tables\Filters\Filter::make('fecha')
-                    ->form([
-                        DatePicker::make('desde')->label('Desde'),
-                        DatePicker::make('hasta')->label('Hasta'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when($data['desde'], fn($q) => $q->whereDate('fecha', '>=', $data['desde']))
-                            ->when($data['hasta'], fn($q) => $q->whereDate('fecha', '<=', $data['hasta']));
-                    }),
 
                 Tables\Filters\SelectFilter::make('disciplina_id')
                     ->label('Disciplina')
@@ -323,7 +332,11 @@ class SesionAdicionalResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Sesión eliminada'),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('reporteSesionesDia')

@@ -72,12 +72,12 @@ class CategoriaProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -129,7 +129,7 @@ class CategoriaProductoResource extends Resource
                     ->icon('heroicon-o-document-text')
                     ->limit(50)
                     ->tooltip(fn($record) => $record->descripcion),
-                    
+
                 TextColumn::make('registradoPor.name')
                     ->label('Registrado por')
                     ->icon('heroicon-o-user-plus')
@@ -149,20 +149,15 @@ class CategoriaProductoResource extends Resource
                 SelectFilter::make('nombre')
                     ->label('Filtrar por nombre')
                     ->options(CategoriaProducto::pluck('nombre', 'nombre')),
-
-                Filter::make('descripcion')
-                    ->label('Contiene descripción')
-                    ->form([
-                        TextInput::make('descripcion')
-                            ->placeholder('Buscar por descripción'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query->when($data['descripcion'], fn($q) => $q->where('descripcion', 'like', "%{$data['descripcion']}%"));
-                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar categoría'),
-                Tables\Actions\DeleteAction::make()->tooltip('Eliminar categoría'),
+                Tables\Actions\DeleteAction::make()
+                    ->tooltip('Eliminar categoría')
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Categoría eliminada'),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

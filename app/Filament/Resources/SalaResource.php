@@ -72,12 +72,12 @@ class SalaResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
     public static function form(Form $form): Form
     {
@@ -175,8 +175,14 @@ class SalaResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Sala eliminada'),
 
                 Tables\Actions\Action::make('ver')
                     ->label('Ver Detalles')

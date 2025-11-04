@@ -80,12 +80,12 @@ class PagoPersonalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -192,8 +192,7 @@ class PagoPersonalResource extends Resource
                 TextColumn::make('personal.nombre_completo')
                     ->label('Nombre del Personal')
                     ->searchable(['personals.nombre', 'personals.apellido_paterno', 'personals.apellido_materno']) // <- ✅ tabla real
-                    ->icon('heroicon-o-user-circle')
-                    ->sortable(),
+                    ->icon('heroicon-o-user-circle'),
 
                 TextColumn::make('fecha')
                     ->label('Fecha del Pago')
@@ -289,7 +288,12 @@ class PagoPersonalResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Pago eliminado'),
             ])
             ->bulkActions([
             ]);

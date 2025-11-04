@@ -84,12 +84,12 @@ class PersonalResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -385,18 +385,6 @@ class PersonalResource extends Resource
                     ])
                     ->placeholder('Todos'),
 
-                Tables\Filters\Filter::make('fecha_contratacion')
-                    ->label('Fecha de contratación')
-                    ->form([
-                        DatePicker::make('desde')->label('Desde'),
-                        DatePicker::make('hasta')->label('Hasta'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when($data['desde'], fn($q) => $q->whereDate('fecha_contratacion', '>=', $data['desde']))
-                            ->when($data['hasta'], fn($q) => $q->whereDate('fecha_contratacion', '<=', $data['hasta']));
-                    }),
-
                 Tables\Filters\SelectFilter::make('disciplina')
                     ->label('Disciplina')
                     ->options(\App\Models\Disciplina::query()->orderBy('nombre')->pluck('nombre', 'id'))
@@ -408,7 +396,13 @@ class PersonalResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Personal eliminado'),
+
                 Tables\Actions\Action::make('ver')
                     ->label('Ver')
                     ->icon('heroicon-o-eye')

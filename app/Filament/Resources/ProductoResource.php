@@ -79,12 +79,12 @@ class ProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -250,12 +250,14 @@ class ProductoResource extends Resource
                     ->label('Registrado por')
                     ->icon('heroicon-o-user-circle')
                     ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
 
                 TextColumn::make('modificadoPor.name')
                     ->label('Modificado por')
                     ->icon('heroicon-o-pencil-square')
                     ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
             ])
             ->headerActions([
@@ -289,22 +291,39 @@ class ProductoResource extends Resource
                     ->relationship('categoria', 'nombre'),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->visible(fn() => auth()->user()?->can('update_producto'))
+                    ->authorize(fn() => auth()->user()?->can('update_producto')),
+
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn($record) => $record->detallesVenta->isEmpty()),
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Producto eliminado'),
+
                 Tables\Actions\Action::make('desactivar')
                     ->label('Desactivar')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->action(fn($record) => $record->update(['activo' => false]))
-                    ->visible(fn($record) => $record->activo),
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()?->hasRole('admin') === true
+                        && $record->activo
+                    ),
+                    
 
                 Tables\Actions\Action::make('activar')
                     ->label('Activar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->action(fn($record) => $record->update(['activo' => true]))
-                    ->visible(fn($record) => !$record->activo),
+                    ->visible(
+                        fn($record) =>
+                        auth()->user()?->hasRole('admin') === true
+                        && !$record->activo
+                    )
+                    ->authorize(fn() => auth()->user()?->hasRole('admin') === true),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),

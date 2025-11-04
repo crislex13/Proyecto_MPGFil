@@ -78,12 +78,12 @@ class UserResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin');
     }
     public static function form(Form $form): Form
     {
@@ -212,7 +212,10 @@ class UserResource extends Resource
             ])
             ->actions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->color('danger'),
                 ViewAction::make()
                     ->label('Ver')
                     ->icon('heroicon-o-eye')

@@ -40,8 +40,8 @@ class Dashboard extends BaseDashboard
     protected function getFooterWidgets(): array
     {
         return [
-            FlujoCajaSemana::class,
-            InscripcionesPorDia::class,
+            //FlujoCajaSemana::class,
+            //InscripcionesPorDia::class,
         ];
     }
 

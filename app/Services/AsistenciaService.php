@@ -112,6 +112,14 @@ class AsistenciaService
             ->count();
     }
 
+    private static function normalizeHoraEntrada(Carbon $m): array
+    {
+        $columnaEsDatetime = true; // <- ajusta según tu schema real
+        return $columnaEsDatetime
+            ? ['fecha' => $m->toDateString(), 'hora_entrada' => $m]           // DATETIME
+            : ['fecha' => $m->toDateString(), 'hora_entrada' => $m->format('H:i:s')]; // TIME
+    }
+
     /* =========================
      *  Ventanas de PLAN (cliente)
      * =========================*/

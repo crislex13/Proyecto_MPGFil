@@ -5,52 +5,91 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\SesionAdicional;
 use App\Models\Asistencia;
-use Illuminate\Support\Carbon;
+use App\Models\Clientes;
+use Carbon\Carbon;
 
 class RegistrarFaltasSesionesAdicionales extends Command
 {
-    protected $signature = 'sesiones:registrar-faltas';
-    protected $description = 'Registra faltas en sesiones adicionales no asistidas por los clientes';
+    protected $signature = 'sesiones:registrar-faltas
+                            {--fecha= : Fecha a evaluar (YYYY-MM-DD). Por defecto: ayer}
+                            {--dry-run : Simula sin insertar}';
 
-    public function handle()
+    protected $description = 'Registra faltas en sesiones adicionales no asistidas por los clientes.';
+
+    public function handle(): int
     {
-        $ayer = now()->subDay(); // Carbon instance
+        // 1) Fecha objetivo (por defecto AYER)
+        $fecha = $this->option('fecha')
+            ? Carbon::createFromFormat('Y-m-d', $this->option('fecha'))->startOfDay()
+            : now()->subDay()->startOfDay();
 
-        // Prevenir registros duplicados
-        if (
-            Asistencia::whereDate('fecha', $ayer)
-                ->where('estado', 'falta')
-                ->where('tipo_asistencia', 'sesion')
-                ->exists()
-        ) {
-            $this->warn("⚠️ Ya se registraron faltas de sesiones adicionales para el día {$ayer->toDateString()}.");
-            return;
-        }
+        $fechaStr = $fecha->toDateString();
+        $dry = (bool) $this->option('dry-run');
+
+        $this->info("Evaluando faltas de sesiones adicionales para: {$fechaStr}" . ($dry ? ' (DRY-RUN)' : ''));
+
+        // 2) Traer sesiones programadas para esa fecha
+        $sesiones = SesionAdicional::query()
+            ->whereDate('fecha', $fechaStr)
+            ->get();
+
+        $procesadas = 0;
         $faltas = 0;
 
-        $sesiones = SesionAdicional::whereDate('fecha', $ayer)->get();
+        foreach ($sesiones as $s) {
+            $procesadas++;
 
-        foreach ($sesiones as $sesion) {
-            $yaAsistio = Asistencia::where('sesion_adicional_id', $sesion->id)
-                ->where('asistible_type', \App\Models\Clientes::class)
+            // 3) ¿Existe asistencia registrada para esa sesión y cliente?
+            $existeAsistencia = Asistencia::query()
+                ->where('sesion_adicional_id', $s->id)
+                ->where('asistible_type', Clientes::class)
+                ->where('asistible_id', $s->cliente_id)
+                ->whereDate('fecha', $fechaStr)
                 ->exists();
 
-            if (!$yaAsistio) {
-                Asistencia::create([
-                    'asistible_id' => $sesion->cliente_id,
-                    'asistible_type' => \App\Models\Clientes::class,
-                    'tipo_asistencia' => 'sesion',
-                    'fecha' => $ayer,
-                    'estado' => 'falta',
-                    'origen' => 'automatico',
-                    'observacion' => 'Falta a sesión adicional no justificada.',
-                    'sesion_adicional_id' => $sesion->id,
-                    'usuario_registro_id' => null,
-                ]);
-                $faltas++;
+            if ($existeAsistencia) {
+                // Ya marcó (puntual/atrasado/salida/permiso/etc.)
+                continue;
             }
+
+            // 4) Idempotencia: ¿ya hay una FALTA cargada para esa sesión/cliente/fecha?
+            $existeFalta = Asistencia::query()
+                ->where('sesion_adicional_id', $s->id)
+                ->where('asistible_type', Clientes::class)
+                ->where('asistible_id', $s->cliente_id)
+                ->where('tipo_asistencia', 'sesion')
+                ->where('estado', 'falta')
+                ->whereDate('fecha', $fechaStr)
+                ->exists();
+
+            if ($existeFalta) {
+                // Falta ya registrada previamente
+                continue;
+            }
+
+            if ($dry) {
+                $this->warn("DRY: Registrar falta a cliente #{$s->cliente_id} por sesión #{$s->id} ({$fechaStr}).");
+                $faltas++;
+                continue;
+            }
+
+            // 5) Registrar la falta
+            Asistencia::create([
+                'asistible_id' => $s->cliente_id,
+                'asistible_type' => Clientes::class,
+                'tipo_asistencia' => 'sesion',
+                'sesion_adicional_id' => $s->id,
+                'fecha' => $fechaStr,
+                'estado' => 'falta',
+                'origen' => 'automatico',
+                'observacion' => "Falta a sesión adicional no justificada el {$fecha->format('d/m/Y')}.",
+                'usuario_registro_id' => null,
+            ]);
+
+            $faltas++;
         }
 
-        $this->info("✔ Se registraron $faltas faltas en sesiones adicionales.");
+        $this->info("✅ Sesiones evaluadas: {$sesiones->count()} | Faltas registradas: {$faltas}");
+        return self::SUCCESS;
     }
 }

@@ -20,16 +20,17 @@ class ProcesarAsistenciasBiometrico extends Command
 
     public function handle(): int
     {
-        $ruta = $this->option('path') ?: storage_path('app/registros_biometrico/registros.txt');
+        $origenPath = $this->option('path') ?: storage_path('app/registros_biometrico/registros.txt');
 
-        if (!File::exists($ruta)) {
-            $this->error('⚠️ El archivo de registros no existe: ' . $ruta);
+        if (!File::exists($origenPath)) {
+            $this->error('⚠️ El archivo de registros no existe: ' . $origenPath);
             return self::FAILURE;
         }
 
-        $fp = fopen($ruta, 'c+');
+        // 1) Abre con lock exclusivo para "rotar" el archivo y dejarlo vacío de forma atómica.
+        $fp = fopen($origenPath, 'c+');
         if (!$fp) {
-            $this->error('⚠️ No se pudo abrir el archivo: ' . $ruta);
+            $this->error('⚠️ No se pudo abrir el archivo: ' . $origenPath);
             return self::FAILURE;
         }
         if (!flock($fp, LOCK_EX)) {
@@ -38,111 +39,190 @@ class ProcesarAsistenciasBiometrico extends Command
             return self::FAILURE;
         }
 
+        // 2) Genera backup destino (si está vacío, igual crea uno por trazabilidad)
+        $backupDir = dirname($origenPath);
+        $backupPath = $backupDir . '/procesados_' . now()->format('Ymd_His') . '.log';
+
         try {
-            // Leemos todo el contenido bajo lock
-            $contenido  = stream_get_contents($fp);
-            $lineas     = preg_split("/\r\n|\n|\r/", $contenido ?? '');
-            $procesados = 0;
-            $errores    = 0;
-            $hashVistos = [];
+            // Asegura puntero al inicio ANTES de copiar
+            rewind($fp);
 
-            foreach ($lineas as $i => $linea) {
-                $linea = trim($linea);
-                if ($linea === '') continue;
-
-                try {
-                    // Formato esperado: "YYYY-MM-DD HH:MM:SS;CI"
-                    if (substr_count($linea, ';') < 1) {
-                        $errores++;
-                        Log::warning("Biométrico: línea inválida [{$i}] → {$linea}");
-                        continue;
-                    }
-
-                    [$fechaHoraRaw, $ciRaw] = explode(';', $linea, 2);
-                    $ci        = trim($ciRaw);
-                    $fechaHora = trim($fechaHoraRaw);
-
-                    // Idempotencia por corrida
-                    $hash = md5($fechaHora . '|' . $ci);
-                    if (isset($hashVistos[$hash])) {
-                        continue;
-                    }
-                    $hashVistos[$hash] = true;
-
-                    // Parseo fecha/hora (timezone de la app)
-                    try {
-                        $momento = Carbon::parse($fechaHora);
-                    } catch (\Throwable $e) {
-                        $errores++;
-                        Log::warning("Biométrico: fecha/hora inválida [{$i}] → {$linea}");
-                        continue;
-                    }
-
-                    // Resolver sujeto
-                    $personal = Personal::where('ci', $ci)->first();
-                    $cliente  = Clientes::where('ci', $ci)->first();
-
-                    // Modo simulación
-                    if ($this->option('dry-run')) {
-                        if ($personal) {
-                            $this->line("DRY-RUN: Personal {$personal->id} {$personal->nombre} {$momento}");
-                        } elseif ($cliente) {
-                            $this->line("DRY-RUN: Cliente {$cliente->id} {$cliente->nombre} {$momento}");
-                        } else {
-                            $this->line("DRY-RUN: CI no encontrado: {$ci}");
-                        }
-                        $procesados++;
-                        continue;
-                    }
-
-                    // Prioridad: Personal > Cliente
-                    if ($personal) {
-                        [$ok, $msg] = AsistenciaService::togglePersonal($personal, $momento, 'biometrico');
-                        if (!$ok) Log::info("Biométrico: aviso personal CI {$ci} → {$msg}");
-                        $procesados++;
-                        continue;
-                    }
-
-                    if ($cliente) {
-                        [$ok, $msg] = AsistenciaService::toggleCliente($cliente, $momento, 'biometrico');
-                        if (!$ok) Log::info("Biométrico: aviso cliente CI {$ci} → {$msg}");
-                        $procesados++;
-                        continue;
-                    }
-
-                    $errores++;
-                    Log::warning("Biométrico: CI no encontrado [{$i}] → {$ci}");
-                } catch (\Throwable $e) {
-                    $errores++;
-                    Log::error("Biométrico: error procesando línea [{$i}] → {$linea} :: {$e->getMessage()}");
-                }
+            // Copia el contenido del archivo origen al backup (sin cargar todo a memoria)
+            $dest = fopen($backupPath, 'w');
+            if (!$dest) {
+                $this->error('⚠️ No se pudo crear backup: ' . $backupPath);
+                return self::FAILURE;
             }
+            stream_copy_to_stream($fp, $dest);
+            fflush($dest);
+            fclose($dest);
 
-            // Limpiar archivo procesado
+            // 3) Limpia el archivo original (quedará listo para próximas marcas)
             rewind($fp);
             ftruncate($fp, 0);
             fflush($fp);
-
-            // Guardar respaldo
-            if (!empty($contenido)) {
-                $dirBackup = storage_path('app/registros_biometrico');
-                if (!File::exists($dirBackup)) {
-                    File::makeDirectory($dirBackup, 0755, true);
-                }
-                $backup = $dirBackup . '/procesados_' . now()->format('Ymd_His') . '.log';
-                File::put($backup, $contenido);
-            }
-
-            $this->info("✅ Procesados: {$procesados}");
-            if ($errores > 0) {
-                $this->warn("⚠️ Con errores: {$errores} (revisa storage/logs/laravel.log)");
-            }
-
-            return self::SUCCESS;
         } finally {
-            // Siempre liberar lock y cerrar
-            try { flock($fp, LOCK_UN); } catch (\Throwable $e) {}
-            try { fclose($fp); } catch (\Throwable $e) {}
+            // Libera lock del origen
+            try {
+                flock($fp, LOCK_UN);
+            } catch (\Throwable $e) {
+            }
+            try {
+                fclose($fp);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        // 4) Procesa el BACKUP línea por línea (ya sin lock).
+        $procesados = 0;
+        $errores = 0;
+        $hashVistos = [];
+
+        // Si el backup quedó vacío, no hay nada que procesar
+        if (filesize($backupPath) === 0) {
+            $this->info('🟢 No había registros nuevos. Nada que procesar.');
+            return self::SUCCESS;
+        }
+
+        $fh = fopen($backupPath, 'r');
+        if (!$fh) {
+            $this->error('⚠️ No se pudo abrir el backup para lectura: ' . $backupPath);
+            return self::FAILURE;
+        }
+
+        $lineaN = 0;
+        while (($linea = fgets($fh)) !== false) {
+            $lineaN++;
+
+            // Normaliza encoding y BOM
+            $linea = $this->normalizeLine($linea);
+
+            if ($linea === '') {
+                continue;
+            }
+
+            try {
+                // Formato esperado: "YYYY-MM-DD HH:MM:SS;CI"
+                // Aceptamos espacios alrededor de ';'
+                if (substr_count($linea, ';') < 1) {
+                    $errores++;
+                    Log::warning("Biométrico: línea inválida [{$lineaN}] → {$linea}");
+                    continue;
+                }
+
+                [$fechaHoraRaw, $ciRaw] = explode(';', $linea, 2);
+                $ci = trim($ciRaw);
+                $fechaHora = trim($fechaHoraRaw);
+
+                // Idempotencia por corrida
+                $hash = md5($fechaHora . '|' . $ci);
+                if (isset($hashVistos[$hash])) {
+                    continue;
+                }
+                $hashVistos[$hash] = true;
+
+                // Parseo fecha/hora (timezone de la app)
+                $momento = $this->parseDateTime($fechaHora);
+                if (!$momento) {
+                    $errores++;
+                    Log::warning("Biométrico: fecha/hora inválida [{$lineaN}] → {$linea}");
+                    continue;
+                }
+
+                // Resolver sujeto (prioridad: Personal > Cliente)
+                $personal = Personal::where('ci', $ci)->first();
+                $cliente = Clientes::where('ci', $ci)->first();
+
+                // Modo simulación
+                if ($this->option('dry-run')) {
+                    if ($personal) {
+                        $this->line("DRY-RUN: Personal {$personal->id} {$personal->nombre} {$momento->toDateTimeString()}");
+                    } elseif ($cliente) {
+                        $this->line("DRY-RUN: Cliente {$cliente->id} {$cliente->nombre} {$momento->toDateTimeString()}");
+                    } else {
+                        $this->line("DRY-RUN: CI no encontrado: {$ci}");
+                    }
+                    $procesados++;
+                    continue;
+                }
+
+                if ($personal) {
+                    [$ok, $msg] = AsistenciaService::togglePersonal($personal, $momento, 'biometrico');
+                    if (!$ok)
+                        Log::info("Biométrico: aviso personal CI {$ci} → {$msg}");
+                    $procesados++;
+                    continue;
+                }
+
+                if ($cliente) {
+                    [$ok, $msg] = AsistenciaService::toggleCliente($cliente, $momento, 'biometrico');
+                    if (!$ok)
+                        Log::info("Biométrico: aviso cliente CI {$ci} → {$msg}");
+                    $procesados++;
+                    continue;
+                }
+
+                $errores++;
+                Log::warning("Biométrico: CI no encontrado [{$lineaN}] → {$ci}");
+            } catch (\Throwable $e) {
+                $errores++;
+                Log::error("Biométrico: error procesando línea [{$lineaN}] → {$linea} :: {$e->getMessage()}");
+            }
+        }
+
+        fclose($fh);
+
+        $this->info("✅ Procesados: {$procesados}");
+        if ($errores > 0) {
+            $this->warn("⚠️ Con errores: {$errores} (revisa storage/logs/laravel.log)");
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * Normaliza una línea: quita BOM, recorta espacios, asegura UTF-8 y regresa cadena limpia.
+     */
+    private function normalizeLine(string $line): string
+    {
+        // Elimina BOM si existe
+        if (strpos($line, "\xEF\xBB\xBF") === 0) {
+            $line = substr($line, 3);
+        }
+
+        // Intenta forzar a UTF-8 si viniera en ANSI/Latin
+        if (!mb_check_encoding($line, 'UTF-8')) {
+            $line = mb_convert_encoding($line, 'UTF-8', 'auto');
+        }
+
+        // Recorta y normaliza separadores
+        $line = trim($line);
+
+        return $line;
+    }
+
+    /**
+     * Parsea un datetime robusto. Espera "YYYY-MM-DD HH:MM:SS" pero tolera "YYYY/MM/DD HH:MM:SS".
+     * Retorna Carbon o null si es inválido.
+     */
+    private function parseDateTime(string $raw): ?Carbon
+    {
+        $raw = trim($raw);
+
+        // Reemplaza "/" por "-" si viniera así
+        $candidate = str_replace('/', '-', $raw);
+
+        try {
+            // Intenta parseo flexible
+            return Carbon::parse($candidate);
+        } catch (\Throwable $e) {
+            // Intento estricto "Y-m-d H:i:s"
+            try {
+                $dt = Carbon::createFromFormat('Y-m-d H:i:s', $candidate);
+                return $dt ?: null;
+            } catch (\Throwable $e2) {
+                return null;
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Personal;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\HasAuditoria;
+use App\Models\User;
 
 class PermisoPersonal extends Model
 {
@@ -53,5 +54,15 @@ class PermisoPersonal extends Model
         $fecha = $fecha ? \Carbon\Carbon::parse($fecha)->toDateString() : now()->toDateString();
         return $q->whereDate('fecha_inicio', '<=', $fecha)
             ->whereDate('fecha_fin', '>=', $fecha);
+    }
+
+    public function registradoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'registrado_por');
+    }
+
+    public function modificadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'modificado_por');
     }
 }

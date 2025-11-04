@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 class ClienteDashboard extends Page
 {
     public $cliente;
+
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     protected static string $view = 'filament.pages.cliente-dashboard';
 
@@ -28,16 +29,19 @@ class ClienteDashboard extends Page
     public static function canAccess(): bool
     {
         return Auth::user()?->hasRole('cliente');
-        
     }
 
     public function mount()
     {
         $this->cliente = \App\Models\Clientes::with([
             'planesCliente.plan',
-            'asistencias',
-            'sesionesAdicionales',
-        ])->where('user_id', auth()->id())->firstOrFail();
+            // Solo asistencias válidas (excluye falta / acceso_denegado)
+            'asistencias' => fn($q) => $q
+                ->whereIn('estado', ['puntual', 'atrasado', 'permiso'])
+                ->latest('fecha')->latest('hora_entrada'),
+            'sesionesAdicionales' => fn($q) => $q->latest('fecha'),
+        ])
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
     }
-    
 }

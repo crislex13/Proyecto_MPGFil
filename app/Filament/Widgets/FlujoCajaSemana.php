@@ -10,98 +10,96 @@ use App\Models\SesionAdicional;
 use App\Models\IngresoProducto;
 use App\Models\PagoPersonal;
 use Filament\Widgets\ChartWidget;
-use BezhanSalleh\FilamentShield\Contracts\HasWidgetAuthorization;
 
 class FlujoCajaSemana extends ChartWidget
 {
+    protected static ?string $heading = 'Composición Semanal (Torta)';
+    protected static ?int $sort = 6;
+
     public static function canView(): bool
     {
         return auth()->check() && auth()->user()->hasRole('admin');
     }
 
-    protected static ?string $heading = 'Flujo de Caja - Últimos 7 días';
-    protected static ?int $sort = 5;
-
     protected function getData(): array
     {
-        $labels = [];
-        $ingresos = [];
-        $egresos = [];
-        $utilidades = [];
+        $ingTotal = 0;
+        $egrTotal = 0;
 
         for ($i = 6; $i >= 0; $i--) {
             $dia = Carbon::today()->subDays($i)->toDateString();
-            $labels[] = Carbon::parse($dia)->format('d M');
 
-            // Ingresos
-            $totalIngresos =
+            $ingTotal +=
                 PlanCliente::whereDate('fecha_inicio', $dia)->sum('total') +
                 VentaProducto::whereDate('fecha', $dia)->sum('total') +
                 Casillero::whereDate('fecha_entrega_llave', $dia)->sum('costo_mensual') +
                 Casillero::whereDate('fecha_entrega_llave', $dia)->sum('monto_reposiciones') +
                 SesionAdicional::whereDate('fecha', $dia)->sum('precio');
 
-            // Egresos
-            $totalEgresos =
+            $egrTotal +=
                 IngresoProducto::whereDate('fecha', $dia)->sum('precio_unitario') +
                 IngresoProducto::whereDate('fecha', $dia)->sum('precio_paquete') +
                 PagoPersonal::whereDate('fecha', $dia)->where('pagado', 1)->sum('monto');
-
-            $ingresos[] = $totalIngresos;
-            $egresos[] = $totalEgresos;
-            $utilidades[] = $totalIngresos - $totalEgresos;
         }
+
+        $utiTotal = $ingTotal - $egrTotal;
 
         return [
             'datasets' => [
                 [
-                    'label' => 'Ingresos',
-                    'data' => $ingresos,
-                    'borderColor' => 'rgb(255, 215, 0)',
-                    'backgroundColor' => 'rgba(255, 215, 0, 0.2)',
-                    'tension' => 0.4,
-                ],
-                [
-                    'label' => 'Egresos',
-                    'data' => $egresos,
-                    'borderColor' => 'rgb(255, 69, 0)',
-                    'backgroundColor' => 'rgba(255, 69, 0, 0.2)',
-                    'tension' => 0.4,
-                ],
-                [
-                    'label' => 'Utilidad',
-                    'data' => $utilidades,
-                    'borderColor' => 'rgb(50, 205, 50)',
-                    'backgroundColor' => 'rgba(50, 205, 50, 0.2)',
-                    'tension' => 0.4,
-                ],
+                    'label' => 'Semana',
+                    'data' => [$ingTotal, $egrTotal, $utiTotal],
+                    'backgroundColor' => [
+                        'rgba(255, 215, 0, 0.8)', // Ingresos
+                        'rgba(255, 69, 0, 0.8)',  // Egresos
+                        'rgba(50, 205, 50, 0.8)', // Utilidad
+                    ],
+                    'borderColor' => [
+                        'rgb(255, 215, 0)',
+                        'rgb(255, 69, 0)',
+                        'rgb(50, 205, 50)',
+                    ],
+                    'borderWidth' => 1,
+                ]
             ],
-            'labels' => $labels,
+            'labels' => ['Ingresos', 'Egresos', 'Utilidad'],
         ];
     }
 
     protected function getType(): string
     {
-        return 'line';
-    }
-
-    public function getColumnSpan(): int|string
-    {
-        return 3;
+        return 'doughnut'; // o 'pie'
     }
 
     protected function getChartOptions(): array
     {
         return [
-            'maintainAspectRatio' => false,
             'responsive' => true,
+            'maintainAspectRatio' => false,
+            'plugins' => [
+                'legend' => [
+                    'position' => 'bottom',        // ↓
+                    'labels' => [
+                        'boxWidth' => 10,          // ↓
+                        'font' => ['size' => 10],  // ↓
+                    ],
+                ],
+                'tooltip' => [
+                    'bodyFont' => ['size' => 11],  // ↓
+                    'titleFont' => ['size' => 11], // ↓
+                ],
+            ],
+            'cutout' => '65%', // dona un poco más delgada
         ];
+    }
+
+    public function getColumnSpan(): int|string
+    {
+        return 1;
     }
 
     public function getExtraAttributes(): array
     {
-        return [
-            'class' => 'h-[180px] max-h-[180px] overflow-hidden',
-        ];
+        return ['class' => 'h-[160px] max-h-[160px] overflow-hidden']; // ↓
     }
 }

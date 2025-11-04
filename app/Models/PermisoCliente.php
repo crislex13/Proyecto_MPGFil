@@ -61,4 +61,14 @@ class PermisoCliente extends Model
         return $this->belongsTo(PlanCliente::class, 'cliente_id', 'cliente_id')
             ->where('estado', 'vigente');
     }
+
+    public function registradoPor(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'registrado_por');
+    }
+
+    public function modificadoPor(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'modificado_por');
+    }
 }

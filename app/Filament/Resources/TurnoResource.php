@@ -75,12 +75,12 @@ class TurnoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
 
@@ -214,7 +214,13 @@ class TurnoResource extends Resource
                     ->label('Personal')
                     ->searchable(['personals.nombre', 'personals.apellido_paterno', 'personals.apellido_materno']) // <- ✅ tabla real
                     ->icon('heroicon-o-user-circle')
-                    ->sortable(),
+                    ->sortable(query: function (Builder $query, string $direction) {
+                        $query->leftJoin('personals', 'turnos.personal_id', '=', 'personals.id')
+                            ->orderByRaw(
+                                "CONCAT(personals.nombre,' ',personals.apellido_paterno,' ',COALESCE(personals.apellido_materno,'')) {$direction}"
+                            )
+                            ->select('turnos.*');
+                    }),
 
                 TextColumn::make('nombre')
                     ->label('Nombre del Turno')
@@ -222,14 +228,14 @@ class TurnoResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                BadgeColumn::make('dia_nombre') // <- usa el accesor
+                BadgeColumn::make('dia_nombre')
                     ->label('Día')
                     ->colors([
                         'gray' => fn($state) => in_array($state, ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']),
                         'warning' => fn($state) => $state === 'Sábado',
                         'danger' => fn($state) => $state === 'Domingo',
                     ])
-                    ->sortable(),
+                    ->sortable(query: fn(Builder $query, string $direction) => $query->orderBy('dia', $direction)),
 
                 TextColumn::make('hora_inicio')
                     ->label('Hora de Inicio')
@@ -310,7 +316,12 @@ class TurnoResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Turno eliminado'),
 
                 Tables\Actions\Action::make('ver')
                     ->label('Ver Detalles')

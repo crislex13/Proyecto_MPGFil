@@ -9,71 +9,96 @@ use Carbon\Carbon;
 
 class RegistrarFaltasPersonal extends Command
 {
-    protected $signature = 'asistencias:registrar-faltas';
-    protected $description = 'Registrar faltas de personal que no marcaron asistencia ni tienen permiso';
+    protected $signature = 'personal:registrar-faltas
+                            {--fecha= : Fecha a evaluar (YYYY-MM-DD). Por defecto: ayer}
+                            {--dry-run : Simula sin insertar}';
 
-    public function handle()
+    protected $description = 'Registra faltas del personal que tenía turno activo, no asistió y no tenía permiso.';
+
+    public function handle(): int
     {
-        // 📅 Fecha actual (solo día)
-        $hoy = Carbon::today();
+        // 1) Fecha objetivo (por defecto AYER)
+        $fecha = $this->option('fecha')
+            ? Carbon::createFromFormat('Y-m-d', $this->option('fecha'))->startOfDay()
+            : now()->subDay()->startOfDay();
 
-        // 🛡️ Verificación para evitar duplicación de faltas
-        if (
-            Asistencia::whereDate('fecha', $hoy)
-                ->where('estado', 'falta')
-                ->where('tipo_asistencia', 'personal')
-                ->exists()
-        ) {
-            $this->warn("⚠️ Ya se registraron faltas de personal hoy ({$hoy->toDateString()}).");
-            return;
-        }
+        $fechaStr = $fecha->toDateString();
+        $dry = (bool) $this->option('dry-run');
 
-        // 📌 Obtener el día de la semana actual (ej: lunes, martes...)
-        $diaSemana = $hoy->locale('es')->isoFormat('dddd');
+        $this->info("Evaluando faltas del personal para: {$fechaStr}" . ($dry ? ' (DRY-RUN)' : ''));
 
-        // 🔍 Buscar personal con turno activo para este día de la semana
-        $personales = Personal::whereHas('turnos', function ($query) use ($diaSemana) {
-            $query->where('dia', $diaSemana)
-                ->where('estado', 'activo');
-        })->get();
+        // 2) Día de la semana como entero 1..7 (coincide con tu modelo Turno)
+        $dow = $fecha->isoWeekday(); // 1=Lunes … 7=Domingo
 
-        $this->info("👥 Se encontraron {$personales->count()} instructores con turno activo para hoy ({$diaSemana}).");
+        // 3) Personal con turno ACTIVO ese día
+        $personales = Personal::whereHas('turnos', function ($q) use ($dow) {
+                $q->where('dia', $dow)->where('estado', 'activo');
+            })
+            ->with(['permisos' => function ($q) use ($fechaStr) {
+                $q->where('estado', 'aprobado')->whereDate('fecha', $fechaStr);
+            }])
+            ->cursor();
 
-        foreach ($personales as $personal) {
-            // ✅ Verificar si tiene un permiso aprobado para hoy
-            $tienePermiso = $personal->tienePermisoHoy();
+        $procesados = 0;
+        $faltas = 0;
 
+        foreach ($personales as $p) {
+            $procesados++;
+
+            // 4) Si tiene permiso aprobado ese día → no es falta
+            $tienePermiso = method_exists($p, 'permisos') && $p->permisos->isNotEmpty();
             if ($tienePermiso) {
-                $this->line("✔ {$personal->nombre_completo}: Tiene permiso aprobado hoy.");
+                $this->line("✔ {$p->nombre_completo}: permiso aprobado ({$fechaStr}).");
                 continue;
             }
 
-            // ✅ Verificar si ya tiene asistencia registrada
-            $tieneAsistencia = Asistencia::whereDate('fecha', $hoy)
-                ->where('asistible_id', $personal->id)
+            // 5) Si ya tiene alguna asistencia ese día (puntual/atrasado/permiso/salida) → no es falta
+            $tieneAsistencia = Asistencia::whereDate('fecha', $fechaStr)
+                ->where('asistible_id', $p->id)
                 ->where('asistible_type', Personal::class)
                 ->exists();
 
             if ($tieneAsistencia) {
-                $this->line("✔ {$personal->nombre_completo}: Ya tiene asistencia registrada.");
+                $this->line("✔ {$p->nombre_completo}: ya tiene asistencia en {$fechaStr}.");
                 continue;
             }
 
-            // ❌ No tiene permiso ni asistencia → se registra como falta
+            // 6) Idempotencia: ¿ya existe falta registrada para este personal y fecha?
+            $existeFalta = Asistencia::whereDate('fecha', $fechaStr)
+                ->where('asistible_id', $p->id)
+                ->where('asistible_type', Personal::class)
+                ->where('tipo_asistencia', 'personal')
+                ->where('estado', 'falta')
+                ->exists();
+
+            if ($existeFalta) {
+                $this->line("• {$p->nombre_completo}: falta ya registrada previamente.");
+                continue;
+            }
+
+            if ($dry) {
+                $this->warn("DRY: Registrar falta a {$p->nombre_completo} ({$fechaStr}).");
+                $faltas++;
+                continue;
+            }
+
+            // 7) Registrar falta
             Asistencia::create([
-                'asistible_id' => $personal->id,
-                'asistible_type' => Personal::class,
-                'tipo_asistencia' => 'personal',
-                'fecha' => $hoy,
-                'estado' => 'falta',
-                'origen' => 'automatico',
-                'observacion' => "Falta injustificada correspondiente al día {$hoy->format('d/m/Y')}. No asistió ni tenía permiso.",
+                'asistible_id'        => $p->id,
+                'asistible_type'      => Personal::class,
+                'tipo_asistencia'     => 'personal',
+                'fecha'               => $fechaStr,
+                'estado'              => 'falta',
+                'origen'              => 'automatico',
+                'observacion'         => "Falta injustificada el {$fecha->format('d/m/Y')}. No asistió ni tenía permiso.",
                 'usuario_registro_id' => null,
             ]);
 
-            $this->warn("❌ {$personal->nombre_completo}: Falta registrada.");
+            $this->warn("❌ {$p->nombre_completo}: falta registrada.");
+            $faltas++;
         }
 
-        $this->info('✅ Proceso de registro de faltas finalizado correctamente.');
+        $this->info("✅ Procesados: {$procesados} | Faltas registradas: {$faltas}");
+        return self::SUCCESS;
     }
 }

@@ -7,93 +7,151 @@ use App\Models\Clientes;
 use App\Models\Asistencia;
 use App\Models\PlanCliente;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 class RegistrarFaltasClientes extends Command
 {
-    protected $signature = 'clientes:registrar-faltas';
+    protected $signature = 'clientes:registrar-faltas
+                            {--fecha= : Fecha a evaluar en formato YYYY-MM-DD (por defecto, ayer)}
+                            {--dry-run : Simula sin insertar}';
 
-    protected $description = 'Registra faltas injustificadas de clientes que no asistieron en días permitidos';
+    protected $description = 'Registra faltas injustificadas (tipo plan) para clientes que debían asistir y no lo hicieron.';
 
-    public function handle()
+    public function handle(): int
     {
-        $hoy = now()->subDay(); // Siempre verificamos el DÍA ANTERIOR
-        if (
-            Asistencia::whereDate('fecha', $hoy)
-                ->where('estado', 'falta')
-                ->where('tipo_asistencia', 'plan')
-                ->exists()
-        ) {
-            $this->warn("⚠️ Ya se registraron faltas de clientes para el día {$hoy->toDateString()}.");
-            return;
-        }
-        $clientes = Clientes::with([
-            'planesCliente' => function ($q) use ($hoy) {
-                $q->whereDate('fecha_inicio', '<=', $hoy)
-                    ->whereDate('fecha_final', '>=', $hoy)
-                    ->whereIn('estado', ['vigente', 'deuda'])
-                    ->with('plan');
-            }
-        ])->get();
+        // 1) Fecha objetivo (por defecto, AYER)
+        $fecha = $this->option('fecha')
+            ? Carbon::createFromFormat('Y-m-d', $this->option('fecha'))->startOfDay()
+            : now()->subDay()->startOfDay();
+
+        $fechaStr = $fecha->toDateString();
+        $dry = (bool) $this->option('dry-run');
+
+        $this->info("Evaluando faltas para el día: {$fechaStr}" . ($dry ? ' (DRY-RUN)' : ''));
 
         $totalFaltas = 0;
+        $procesados = 0;
 
-        foreach ($clientes as $cliente) {
-            $planCliente = $cliente->planesCliente->first();
-            if (!$planCliente || !$planCliente->plan)
-                continue;
+        // 2) Recorremos clientes por cursor para escalar mejor
+        Clientes::query()
+            ->with([
+                // Solo planes vigentes el día objetivo
+                'planesCliente' => function (Builder $q) use ($fechaStr) {
+                    $q->whereDate('fecha_inicio', '<=', $fechaStr)
+                        ->whereDate('fecha_final', '>=', $fechaStr)
+                        ->whereIn('estado', ['vigente', 'deuda'])
+                        ->with('plan');
+                },
+                // Permisos del día objetivo (si existe relación)
+                'permisos' => function ($q) use ($fechaStr) {
+                    $q->where('estado', 'aprobado')
+                        ->whereDate('fecha', $fechaStr);
+                },
+            ])
+            ->cursor()
+            ->each(function (Clientes $cliente) use (&$totalFaltas, &$procesados, $fecha, $fechaStr, $dry) {
+                $procesados++;
 
-            $plan = $planCliente->plan;
+                // a) Tiene plan vigente ese día
+                /** @var PlanCliente|null $planCliente */
+                $planCliente = $cliente->planesCliente
+                    ->sortByDesc('fecha_final')
+                    ->first();
 
-            // Validar si el día anterior está permitido según tipo de asistencia
-            if (in_array('dias_seleccionados', (array) $plan->tipo_asistencia)) {
-                $diaSemana = $hoy->dayOfWeek;
+                if (!$planCliente || !$planCliente->plan) {
+                    return; // sin plan vigente → no debía asistir
+                }
 
-                $diasPermitidos = collect($planCliente->dias_permitidos ?? [])->map(fn($dia) => match ($dia) {
-                    'domingo' => 0,
-                    'lunes' => 1,
-                    'martes' => 2,
-                    'miercoles' => 3,
-                    'jueves' => 4,
-                    'viernes' => 5,
-                    'sabado' => 6,
-                    default => null,
-                })->filter()->unique()->toArray();
+                // b) Si el plan usa días seleccionados, validar día permitido
+                $debeAsistirHoy = true;
 
-                if (!in_array($diaSemana, $diasPermitidos))
-                    continue; // No debía asistir
-            }
+                // Detecta si tu plan usa la modalidad de días seleccionados
+                $usaDiasSeleccionados = in_array('dias_seleccionados', (array) ($planCliente->plan->tipo_asistencia ?? []), true);
 
-            // Validar que no haya tenido permiso
-            $tienePermiso = $cliente->permisos()
-                ->where('estado', 'aprobado')
-                ->whereDate('fecha', $hoy->toDateString())
-                ->exists();
+                if ($usaDiasSeleccionados) {
+                    $dow = (int) $fecha->dayOfWeek; // 0..6 (Dom..Sáb)
+    
+                    $diasPermitidos = collect($planCliente->dias_permitidos ?? [])
+                        ->map(function ($dia) {
+                            return match (strtolower($dia)) {
+                                'domingo' => 0,
+                                'lunes' => 1,
+                                'martes' => 2,
+                                'miercoles', 'miércoles' => 3,
+                                'jueves' => 4,
+                                'viernes' => 5,
+                                'sabado', 'sábado' => 6,
+                                default => null,
+                            };
+                        })
+                        ->filter(fn($v) => $v !== null)
+                        ->unique()
+                        ->values()
+                        ->toArray();
 
-            if ($tienePermiso)
-                continue;
+                    if (!in_array($dow, $diasPermitidos, true)) {
+                        $debeAsistirHoy = false; // no correspondía asistir
+                    }
+                }
 
-            // Validar que no haya asistido ese día
-            $asistio = Asistencia::whereDate('fecha', $hoy)
-                ->where('asistible_id', $cliente->id)
-                ->where('asistible_type', Clientes::class)
-                ->exists();
+                if (!$debeAsistirHoy) {
+                    return;
+                }
 
-            if (!$asistio) {
+                // c) Si tuvo permiso aprobado ese día, no es falta
+                $tienePermiso = method_exists($cliente, 'permisos')
+                    ? $cliente->permisos->isNotEmpty()
+                    : false;
+
+                if ($tienePermiso) {
+                    return;
+                }
+
+                // d) Si ya asistió ese día (cualquier tipo para el cliente), no es falta
+                $asistio = Asistencia::whereDate('fecha', $fechaStr)
+                    ->where('asistible_id', $cliente->id)
+                    ->where('asistible_type', Clientes::class)
+                    ->whereNull('estado', 'acceso_denegado') // opcional: ignora denegados
+                    ->exists();
+
+                if ($asistio) {
+                    return;
+                }
+
+                // e) Idempotencia por cliente+fecha+tipo_asistencia=falta(plan)
+                $existsFalta = Asistencia::whereDate('fecha', $fechaStr)
+                    ->where('asistible_id', $cliente->id)
+                    ->where('asistible_type', Clientes::class)
+                    ->where('tipo_asistencia', 'plan')
+                    ->where('estado', 'falta')
+                    ->exists();
+
+                if ($existsFalta) {
+                    return; // ya registrada para este cliente y fecha
+                }
+
+                if ($dry) {
+                    $this->line("DRY: faltaría cliente #{$cliente->id} ({$cliente->nombre} {$cliente->apellido_paterno}) el {$fechaStr}");
+                    $totalFaltas++;
+                    return;
+                }
+
+                // f) Registrar falta
                 Asistencia::create([
                     'asistible_id' => $cliente->id,
                     'asistible_type' => Clientes::class,
                     'tipo_asistencia' => 'plan',
-                    'fecha' => $hoy->toDateString(),
+                    'fecha' => $fechaStr,
                     'estado' => 'falta',
                     'origen' => 'automatico',
-                    'observacion' => "Falta injustificada el {$hoy->format('d/m/Y')}. No asistió ni tenía permiso.",
+                    'observacion' => "Falta injustificada el {$fecha->format('d/m/Y')}. No asistió ni tenía permiso.",
                     'usuario_registro_id' => null,
                 ]);
 
                 $totalFaltas++;
-            }
-        }
+            });
 
-        $this->info("✔ Se registraron $totalFaltas faltas injustificadas.");
+        $this->info("✔ Procesados: {$procesados} | Faltas registradas: {$totalFaltas}");
+        return self::SUCCESS;
     }
 }

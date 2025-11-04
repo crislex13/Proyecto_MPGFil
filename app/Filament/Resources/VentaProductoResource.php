@@ -20,6 +20,7 @@ use Filament\Tables\Columns\{
     TextColumn
 };
 use App\Filament\Resources\VentaProductoResource\RelationManagers\DetallesRelationManager;
+use Illuminate\Database\Eloquent\Builder;
 
 class VentaProductoResource extends Resource
 {
@@ -77,12 +78,12 @@ class VentaProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
 
@@ -121,8 +122,34 @@ class VentaProductoResource extends Resource
                     Placeholder::make('total')
                         ->label('Total (Bs.)')
                         ->content(fn($record) => $record ? number_format($record->total, 2, ',', '.') . ' Bs' : '0.00 Bs'),
+
+                    Section::make('Control de cambios')
+                        ->icon('heroicon-o-user-circle')
+                        ->collapsible()
+                        ->columns(2)
+                        ->schema([
+                            Placeholder::make('registrado_por')
+                                ->label('Registrado por')
+                                ->content(fn($record) => optional($record?->registradoPor)->name ?? '—'),
+                            Placeholder::make('modificado_por')
+                                ->label('Modificado por')
+                                ->content(fn($record) => optional($record?->modificadoPor)->name ?? '—'),
+                        ]),
                 ]),
         ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return parent::getEloquentQuery()
+            ->with(['usuario', 'registradoPor', 'modificadoPor'])
+            ->when(
+                !$user?->hasRole('admin'),
+                fn($q) =>
+                $q->where('usuario_id', $user?->id)
+            );
     }
 
     public static function table(Table $table): Table
@@ -153,11 +180,22 @@ class VentaProductoResource extends Resource
                     ->alignRight()
                     ->sortable()
                     ->icon('heroicon-o-banknotes'),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->searchable(),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->searchable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('usuario_id')
-                    ->label('Responsable')
-                    ->relationship('usuario', 'name'),
 
                 Tables\Filters\SelectFilter::make('metodo_pago')
                     ->label('Método de Pago')
@@ -168,9 +206,15 @@ class VentaProductoResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->label('Adicionar venta') // Texto personalizado
+                    ->label('Adicionar venta')
                     ->tooltip('Adicionar productos a esta venta')
-                    ->icon('heroicon-o-plus-circle'), // Icono más intuitivo
+                    ->icon('heroicon-o-plus-circle'),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Venta eliminada'),
             ])
             ->bulkActions([]);
     }
@@ -191,5 +235,5 @@ class VentaProductoResource extends Resource
         ];
     }
 
-    
+
 }

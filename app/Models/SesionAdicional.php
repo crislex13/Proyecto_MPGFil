@@ -141,4 +141,14 @@ class SesionAdicional extends Model
             ->whereDate('fecha', '<=', $hasta->toDateString());
     }
 
+    public function registradoPor()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'registrado_por');
+    }
+
+    public function modificadoPor()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'modificado_por');
+    }
+
 }

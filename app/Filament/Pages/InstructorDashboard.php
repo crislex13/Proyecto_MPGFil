@@ -30,7 +30,14 @@ class InstructorDashboard extends Page
     {
         $this->instructor = Personal::with([
             'turnos',
-            'asistencias' => fn($q) => $q->latest()->take(5),
+            'asistencias' => function ($q) {
+                $q->where('tipo_asistencia', 'personal')                // solo asistencias de personal
+                    ->whereIn('estado', ['puntual', 'atrasado', 'permiso']) // excluir acceso_denegado, etc.
+                    ->whereNotNull('hora_entrada')                        // aseguramos “registradas”
+                    ->orderByDesc('fecha')
+                    ->orderByDesc('hora_entrada')
+                    ->take(5);
+            },
         ])->where('user_id', auth()->id())->firstOrFail();
     }
 }

@@ -19,6 +19,10 @@ use Filament\Forms\Set;
 use App\Models\Clientes;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Placeholder;
+use App\Filament\Resources\CasilleroResource\Pages\CreateCasillero;
+use App\Filament\Resources\CasilleroResource\Pages\EditCasillero;
+use Filament\Forms;
+use Illuminate\Validation\Rule;
 
 
 
@@ -289,7 +293,6 @@ class CasilleroResource extends Resource
                             ? "Venció hace " . abs(intval($dias)) . " días"
                             : intval($dias) . ' días';
                     })
-                    ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('registradoPor.name')
@@ -307,10 +310,7 @@ class CasilleroResource extends Resource
                     ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('cliente_id')
-                    ->label('Cliente')
-                    ->relationship('cliente', 'nombre')
-                    ->searchable(),
+
 
                 Tables\Filters\SelectFilter::make('estado')
                     ->label('Estado del casillero')

@@ -82,8 +82,8 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('instructor-top-widget', \App\Filament\Widgets\InstructorTopWidget::class);
         Livewire::component('producto-top-widget', \App\Filament\Widgets\ProductoTopWidget::class);
         Livewire::component('flujo-caja-dia-widget', \App\Filament\Widgets\FlujoCajaDiaWidget::class);
-        Livewire::component('flujo-caja-semana', \App\Filament\Widgets\FlujoCajaSemana::class);
-        Livewire::component('inscripciones-por-dia', \App\Filament\Widgets\InscripcionesPorDia::class);
+        //Livewire::component('flujo-caja-semana', \App\Filament\Widgets\FlujoCajaSemana::class);
+        //Livewire::component('inscripciones-por-dia', \App\Filament\Widgets\InscripcionesPorDia::class);
         Livewire::component('sesiones-totales-widget', \App\Filament\Widgets\SesionesTotalesWidget::class);
 
         PermisoCliente::observe(PermisoClienteObserver::class);

@@ -431,6 +431,21 @@ class PlanClienteResource extends Resource
                         ->default('simple')
                         ->required(),
                 ]),
+
+            Section::make('Control de cambios')
+                ->icon('heroicon-o-user-circle')
+                ->collapsible()
+                ->columns(1)
+                ->visible(fn() => auth()->user()?->hasRole('admin'))
+                ->schema([
+                    \Filament\Forms\Components\Placeholder::make('registrado_por')
+                        ->label('Registrado por')
+                        ->content(fn($record) => optional($record?->registradoPor)->name ?? 'No registrado'),
+
+                    \Filament\Forms\Components\Placeholder::make('modificado_por')
+                        ->label('Modificado por')
+                        ->content(fn($record) => optional($record?->modificadoPor)->name ?? 'Sin cambios'),
+                ]),
         ]);
     }
 
@@ -538,11 +553,22 @@ class PlanClienteResource extends Resource
                     ->alignRight()
                     ->color(fn($state) => $state > 0 ? 'danger' : null)
                     ->toggleable(isToggledHiddenByDefault: false),
+
+                TextColumn::make('registradoPor.name')
+                    ->label('Registrado por')
+                    ->icon('heroicon-o-user-plus')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                TextColumn::make('modificadoPor.name')
+                    ->label('Modificado por')
+                    ->icon('heroicon-o-pencil-square')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('cliente_id')
-                    ->label('Cliente')
-                    ->relationship('cliente', 'nombre'),
 
                 Tables\Filters\SelectFilter::make('plan_id')
                     ->label('Plan')
@@ -561,17 +587,6 @@ class PlanClienteResource extends Resource
                         'bloqueado' => 'Bloqueado por deuda',
                     ]),
 
-                Tables\Filters\Filter::make('rango_fecha')
-                    ->label('Rango de fechas')
-                    ->form([
-                        DatePicker::make('desde')->label('Desde'),
-                        DatePicker::make('hasta')->label('Hasta'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when($data['desde'], fn($q) => $q->whereDate('fecha_inicio', '>=', $data['desde']))
-                            ->when($data['hasta'], fn($q) => $q->whereDate('fecha_final', '<=', $data['hasta']));
-                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este plan'),
@@ -617,24 +632,7 @@ class PlanClienteResource extends Resource
                     }),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(fn() => auth()->user()?->hasRole('admin') === true)
-                        ->before(function ($records) {
-                            foreach ($records as $record) {
-                                if ($record->sesionesAdicionales()->exists()) {
-                                    throw new Halt();
-                                }
-                                $idsSesiones = $record->sesionesAdicionales()->pluck('id');
-                                if (
-                                    $idsSesiones->isNotEmpty() &&
-                                    Asistencia::whereIn('sesion_adicional_id', $idsSesiones)->exists()
-                                ) {
-                                    throw new Halt();
-                                }
-                            }
-                        }),
-                ]),
+
             ])
             ->headerActions([
                 Tables\Actions\Action::make('reporteDiario')

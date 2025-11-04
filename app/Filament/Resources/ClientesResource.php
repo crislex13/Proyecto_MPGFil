@@ -336,36 +336,6 @@ class ClientesResource extends Resource
                         'femenino' => 'Femenino',
                     ]),
 
-                Tables\Filters\Filter::make('rango_edad')
-                    ->label('Edad')
-                    ->form([
-                        TextInput::make('min')
-                            ->label('Edad mínima')
-                            ->numeric()
-                            ->placeholder('Ej: 18'),
-                        TextInput::make('max')
-                            ->label('Edad máxima')
-                            ->numeric()
-                            ->placeholder('Ej: 50'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when(
-                                $data['min'],
-                                fn($q) =>
-                                $q->whereDate('fecha_de_nacimiento', '<=', now()->subYears($data['min']))
-                            )
-                            ->when(
-                                $data['max'],
-                                fn($q) =>
-                                $q->whereDate('fecha_de_nacimiento', '>=', now()->subYears($data['max']))
-                            );
-                    }),
-
-                Tables\Filters\SelectFilter::make('registrado_por')
-                    ->label('Registrado por')
-                    ->relationship('registradoPor', 'name')
-                    ->searchable(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

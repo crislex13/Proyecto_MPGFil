@@ -73,12 +73,12 @@ class PlanResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function form(Form $form): Form
@@ -192,6 +192,13 @@ class PlanResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este plan'),
+
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Plan eliminado'),
+
                 Tables\Actions\Action::make('ver')
                     ->label('Ver Detalles')
                     ->icon('heroicon-o-eye')

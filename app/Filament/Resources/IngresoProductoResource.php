@@ -76,12 +76,12 @@ class IngresoProductoResource extends Resource
 
     public static function canDelete($record): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
 
     public static function canDeleteAny(): bool
     {
-        return false;
+        return auth()->user()?->hasRole('admin') === true;
     }
     public static function form(Form $form): Form
     {
@@ -260,26 +260,15 @@ class IngresoProductoResource extends Resource
                 Tables\Filters\SelectFilter::make('producto_id')
                     ->label('Producto')
                     ->relationship('producto', 'nombre'),
-
-                Tables\Filters\SelectFilter::make('usuario_id')
-                    ->label('Registrado por')
-                    ->relationship('usuario', 'name'),
-
-                Tables\Filters\Filter::make('fecha')
-                    ->form([
-                        DatePicker::make('desde')->label('Desde'),
-                        DatePicker::make('hasta')->label('Hasta'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when($data['desde'], fn($q) => $q->whereDate('fecha', '>=', $data['desde']))
-                            ->when($data['hasta'], fn($q) => $q->whereDate('fecha', '<=', $data['hasta']));
-                    })
-                    ->label('Rango de fechas'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()->tooltip('Editar este ingreso'),
-                Tables\Actions\DeleteAction::make()->tooltip('Eliminar este ingreso'),
+                Tables\Actions\DeleteAction::make()
+                    ->tooltip('Eliminar este ingreso')
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Ingreso eliminado'),
             ])
             ->headerActions([
                 Tables\Actions\Action::make('reporte_diario')
