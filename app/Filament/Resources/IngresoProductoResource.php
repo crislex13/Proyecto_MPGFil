@@ -164,6 +164,11 @@ class IngresoProductoResource extends Resource
                                 'max' => 'El precio del paquete no puede exceder 100,000 Bs.',
                             ]),
 
+                        Select::make('metodo_pago')
+                            ->label('Método de pago')
+                            ->options(['efectivo' => 'Efectivo', 'qr' => 'QR'])
+                            ->required(),
+
                         DatePicker::make('fecha_vencimiento')
                             ->label('Fecha de vencimiento')
                             ->placeholder('Solo si el producto es perecedero')

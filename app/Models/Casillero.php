@@ -19,6 +19,8 @@ class Casillero extends Model
         'costo_mensual',
         'total_reposiciones',
         'monto_reposiciones',
+        'metodo_pago',
+        'metodo_pago_reposicion',
         'registrado_por',
         'modificado_por',
     ];

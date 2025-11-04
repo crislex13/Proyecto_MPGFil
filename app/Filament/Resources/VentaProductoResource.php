@@ -216,6 +216,55 @@ class VentaProductoResource extends Resource
                     ->requiresConfirmation()
                     ->successNotificationTitle('Venta eliminada'),
             ])
+            ->headerActions([
+                // ==== Para TODOS (personales) ====
+                Tables\Actions\Action::make('rep_dia_mias')
+                    ->label('Mi reporte diario')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->url(route('reporte.ventas.dia.mias'))
+                    ->openUrlInNewTab(),
+
+                Tables\Actions\Action::make('rep_mes_mias')
+                    ->label('Mi reporte mensual')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('warning')
+                    ->url(fn() => route('reporte.ventas.mes.mias', [
+                        'year' => now()->year,
+                        'month' => now()->month,
+                    ]))
+                    ->openUrlInNewTab(),
+
+                // ==== Solo ADMIN (globales) ====
+                Tables\Actions\Action::make('rep_dia_global')
+                    ->label('Reporte diario (global)')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('primary')
+                    ->url(route('reporte.ventas.dia.global'))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('rep_mes_global')
+                    ->label('Reporte mensual (global)')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('primary')
+                    ->url(fn() => route('reporte.ventas.mes.global', [
+                        'year' => now()->year,
+                        'month' => now()->month,
+                    ]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('rep_anio_global')
+                    ->label('Reporte anual (global)')
+                    ->icon('heroicon-o-document-chart-bar')
+                    ->color('primary')
+                    ->url(fn() => route('reporte.ventas.anio.global', [
+                        'year' => now()->year,
+                    ]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+            ])
             ->bulkActions([]);
     }
 

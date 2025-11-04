@@ -220,6 +220,11 @@ class SesionAdicionalResource extends Resource
                         ->helperText('Debe estar entre 0 y 500 Bs.')
                         ->placeholder('Ej: 50.00 Bs'),
 
+                    Select::make('metodo_pago')
+                        ->label('Método de pago')
+                        ->options(['efectivo' => 'Efectivo', 'qr' => 'QR'])
+                        ->required(),
+
                     Section::make('Control de cambios')
                         ->icon('heroicon-o-user-circle')
                         ->collapsible()

@@ -266,7 +266,8 @@ class ProductoResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
                     ->url(route('reporte.productos.diario'))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn () => auth()->user()?->hasRole('admin')),
                 //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
 
                 Action::make('Reporte Mensual')
@@ -274,7 +275,8 @@ class ProductoResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('warning')
                     ->url(route('reporte.productos.mensual'))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn () => auth()->user()?->hasRole('admin')),
                 //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
 
                 Action::make('Reporte Anual')
@@ -282,7 +284,8 @@ class ProductoResource extends Resource
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('primary')
                     ->url(route('reporte.productos.anual'))
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn () => auth()->user()?->hasRole('admin')),
                 //->visible(fn() => auth()->user()->can('ver_reporte_productos')),
             ])
             ->filters([
@@ -311,7 +314,14 @@ class ProductoResource extends Resource
                         auth()->user()?->hasRole('admin') === true
                         && $record->activo
                     ),
-                    
+
+                Tables\Actions\Action::make('ficha_pdf')
+                    ->label('Ficha PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('primary')
+                    ->url(fn($record) => route('reporte.producto.ficha', ['producto' => $record]))
+                    ->openUrlInNewTab()
+                    ->visible(fn () => auth()->user()?->hasRole('admin')),
 
                 Tables\Actions\Action::make('activar')
                     ->label('Activar')

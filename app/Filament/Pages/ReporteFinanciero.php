@@ -14,61 +14,19 @@ class ReporteFinanciero extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon  = 'heroicon-o-document-text';
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = 'Reportes';
-    protected static string  $view            = 'filament.pages.reporte-financiero';
+    protected static string $view = 'filament.pages.reporte-financiero';
 
-    public ?string $tipo  = 'diario';
-    public ?string $fecha = null;
-
+    // 🔒 No registrar en el menú
     public static function shouldRegisterNavigation(): bool
     {
-        // Solo show en sidebar si es admin
-        return auth()->user()?->hasRole('admin');
+        return false;
     }
 
-    public function mount(): void
+    // 🔒 Bloquear acceso directo por URL
+    public static function canAccess(): bool
     {
-        $this->form->fill([
-            'tipo'  => $this->tipo,
-            'fecha' => now()->toDateString(),
-        ]);
-    }
-
-    protected function getFormSchema(): array
-    {
-        return [
-            Select::make('tipo')
-                ->label('Tipo de reporte')
-                ->options([
-                    'diario'  => 'Diario',
-                    'mensual' => 'Mensual',
-                    'anual'   => 'Anual',
-                ])
-                ->required(),
-
-            DatePicker::make('fecha')
-                ->label('Fecha de referencia')
-                ->required(),
-        ];
-    }
-
-    public function form(Form $form): Form
-    {
-        return $form
-            ->schema($this->getFormSchema())
-            ->statePath('data');
-    }
-
-    public function generarPDF()
-    {
-        $data  = $this->form->getState();
-        $tipo  = $data['tipo'];
-        $fecha = $data['fecha'];
-
-        return redirect()->route('reportes.financiero', [
-            'tipo'  => $tipo,
-            'fecha' => $fecha,
-        ]);
+        return false;
     }
 }

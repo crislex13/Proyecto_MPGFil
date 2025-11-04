@@ -16,6 +16,7 @@ use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Components\Hidden;
+use Filament\Tables\Actions\Action;
 
 
 class PermisoPersonalResource extends Resource
@@ -278,6 +279,24 @@ class PermisoPersonalResource extends Resource
                     ->authorize(fn() => auth()->user()?->hasRole('admin'))
                     ->requiresConfirmation()
                     ->successNotificationTitle('Permiso eliminado'),
+            ])
+            ->headerActions([
+                Action::make('pdf_mensual_permisos_personal')
+                    ->label('PDF mensual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->form([
+                        DatePicker::make('fecha')
+                            ->label('Cualquier día del mes')
+                            ->default(now()->toDateString())
+                            ->required(),
+                    ])
+                    ->url(fn(array $data) => route('reportes.permisos.personal.mensual', [
+                        'fecha' => $data['fecha'] ?? now()->toDateString(),
+                    ]), shouldOpenInNewTab: true),
+            ])
+            ->actions([
+                // ... tus acciones por fila ...
             ])
             ->bulkActions([
             ]);

@@ -21,6 +21,7 @@ class SesionAdicional extends Model
         'tipo_sesion',
         'precio',
         'fecha',
+        'metodo_pago',
         'registrado_por',
         'modificado_por',
     ];

@@ -159,6 +159,21 @@ class CategoriaProductoResource extends Resource
                     ->requiresConfirmation()
                     ->successNotificationTitle('Categoría eliminada'),
             ])
+            ->headerActions([
+                Tables\Actions\Action::make('pdfCategoriasGeneral')
+                    ->label('PDF Categorías (General)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.categorias.general'))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('pdfCategoriasMes')
+                    ->label('PDF Categorías (Mes actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.categorias.mes'))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+            ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);

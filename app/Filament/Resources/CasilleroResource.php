@@ -160,6 +160,18 @@ class CasilleroResource extends Resource
                     ->dehydrated()
                     ->placeholder('Se calcula automáticamente'),
 
+                Select::make('metodo_pago')
+                    ->label('Método pago (mensual)')
+                    ->options(['efectivo' => 'Efectivo', 'qr' => 'QR'])
+                    ->nullable()
+                    ->visible(fn($get) => $get('estado') === 'ocupado'),
+
+                Select::make('metodo_pago_reposicion')
+                    ->label('Método pago (reposiciones)')
+                    ->options(['efectivo' => 'Efectivo', 'qr' => 'QR'])
+                    ->nullable()
+                    ->visible(fn($get) => (int) $get('total_reposiciones') > 0),
+
                 DatePicker::make('fecha_entrega_llave')
                     ->label('Fecha de inicio de uso')
                     ->required()
@@ -184,7 +196,7 @@ class CasilleroResource extends Resource
                     ->dehydrated(true)
                     ->placeholder('Se calculará automáticamente'),
 
-            Section::make('Control de cambios')
+                Section::make('Control de cambios')
                     ->icon('heroicon-o-user-circle')
                     ->collapsible()
                     ->columns(1)
@@ -352,7 +364,33 @@ class CasilleroResource extends Resource
                             'estado' => 'disponible',
                         ]);
                     }),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('reporteDiario')
+                    ->label('PDF Diario (hoy)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.casilleros.dia', ['date' => now()->toDateString()]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('reporteMensual')
+                    ->label('PDF Mensual (actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.casilleros.mes', [
+                        'year' => now()->year,
+                        'month' => now()->month,
+                    ]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
+
+                Tables\Actions\Action::make('reporteAnual')
+                    ->label('PDF Anual (actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn() => route('reportes.casilleros.anio', ['year' => now()->year]))
+                    ->openUrlInNewTab()
+                    ->visible(fn() => auth()->user()?->hasRole('admin')),
             ]);
+
     }
 
     public static function getRelations(): array

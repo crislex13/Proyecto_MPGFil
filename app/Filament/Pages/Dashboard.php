@@ -11,6 +11,8 @@ use App\Filament\Widgets\FlujoCajaDiaWidget;
 use App\Filament\Widgets\FlujoCajaSemana;
 use Illuminate\Support\Facades\Auth;
 use App\Filament\Widgets\SesionesTotalesWidget;
+use Filament\Actions;
+use Filament\Forms\Components\DatePicker;
 
 class Dashboard extends BaseDashboard
 {
@@ -36,6 +38,42 @@ class Dashboard extends BaseDashboard
             FlujoCajaDiaWidget::class => 4,
         ];
     }
+
+    // >>> AÑADE ESTO <<<
+    protected function getHeaderActions(): array
+    {
+        $soloAdmin = fn() => Auth::user()?->hasRole('admin');
+
+        return [
+            Actions\Action::make('pdf_diario_link')
+                ->label('PDF diario')
+                ->icon('heroicon-o-document-arrow-down')
+                ->visible($soloAdmin)
+                ->url(fn() => route('reportes.financiero', [
+                    'tipo' => 'diario',
+                    'fecha' => now()->toDateString(), // referencia de hoy
+                ]), shouldOpenInNewTab: true),
+
+            Actions\Action::make('pdf_mensual_link')
+                ->label('PDF mensual')
+                ->icon('heroicon-o-document-arrow-down')
+                ->visible($soloAdmin)
+                ->url(fn() => route('reportes.financiero', [
+                    'tipo' => 'mensual',
+                    'fecha' => now()->toDateString(), // el controller usa start/endOfMonth()
+                ]), shouldOpenInNewTab: true),
+
+            Actions\Action::make('pdf_anual_link')
+                ->label('PDF anual')
+                ->icon('heroicon-o-document-arrow-down')
+                ->visible($soloAdmin)
+                ->url(fn() => route('reportes.financiero', [
+                    'tipo' => 'anual',
+                    'fecha' => now()->toDateString(), // el controller usa start/endOfYear()
+                ]), shouldOpenInNewTab: true),
+        ];
+    }
+    // <<< FIN ACCIONES >>>
 
     protected function getFooterWidgets(): array
     {

@@ -111,6 +111,10 @@
 
     <h2>Ficha de Personal</h2>
 
+    @php
+        $dias = [1 => 'Lunes', 2 => 'Martes', 3 => 'Miércoles', 4 => 'Jueves', 5 => 'Viernes', 6 => 'Sábado', 7 => 'Domingo'];
+    @endphp
+
     <div class="seccion">
         <div class="titulo-seccion">Datos Personales</div>
 
@@ -164,7 +168,7 @@
                 @foreach($personal->turnos as $turno)
                     <tr>
                         <td>{{ $turno->nombre }}</td>
-                        <td>{{ $turno->dia }}</td>
+                        <td>{{ $dias[$turno->dia] ?? $turno->dia }}</td>
                         <td>{{ $turno->hora_inicio }}</td>
                         <td>{{ $turno->hora_fin }}</td>
                     </tr>

@@ -23,6 +23,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class PagoPersonalResource extends Resource
 {
@@ -124,6 +125,11 @@ class PagoPersonalResource extends Resource
                         ->required()
                         ->numeric()
                         ->minValue(0),
+
+                    Select::make('metodo_pago')
+                        ->label('Método de pago')
+                        ->options(['efectivo' => 'Efectivo', 'qr' => 'QR'])
+                        ->required(),
 
                     Select::make('turno_id')
                         ->label('Turno')
@@ -294,7 +300,41 @@ class PagoPersonalResource extends Resource
                     ->authorize(fn() => auth()->user()?->hasRole('admin'))
                     ->requiresConfirmation()
                     ->successNotificationTitle('Pago eliminado'),
+
+                // Comprobante individual por fila
+                Tables\Actions\Action::make('comprobante')
+                    ->label('Comprobante')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->color('info')
+                    ->visible(fn() => auth()->user()?->hasAnyRole(['admin', 'supervisor']))
+                    ->hidden(fn($record) => empty($record->id))
+                    ->tooltip('Ver/descargar comprobante en PDF')
+                    ->url(fn($record) => route('reportes.pagos.comprobante', ['pago' => $record->id]))
+                    ->openUrlInNewTab(),
             ])
+            ->headerActions([
+                Tables\Actions\Action::make('pdf_diario')
+                    ->label('PDF Diario (Hoy)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasAnyRole(['admin', 'supervisor']))
+                    ->url(fn() => route('reportes.pagos.dia'))
+                    ->openUrlInNewTab(),
+
+                Tables\Actions\Action::make('pdf_mensual')
+                    ->label('PDF Mensual (Mes actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasAnyRole(['admin', 'supervisor']))
+                    ->url(fn() => route('reportes.pagos.mes'))
+                    ->openUrlInNewTab(),
+
+                Tables\Actions\Action::make('pdf_anual')
+                    ->label('PDF Anual (Año actual)')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->visible(fn() => auth()->user()?->hasAnyRole(['admin', 'supervisor']))
+                    ->url(fn() => route('reportes.pagos.anio'))
+                    ->openUrlInNewTab(),
+            ])
+
             ->bulkActions([
             ]);
     }

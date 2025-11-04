@@ -13,6 +13,7 @@ class PagoPersonal extends Model
         'personal_id',
         'fecha',
         'monto',
+        'metodo_pago',
         'descripcion',
         'turno_id',
         'sala_id',

@@ -316,7 +316,7 @@ class TurnoResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                
+
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn() => auth()->user()?->hasRole('admin'))
                     ->authorize(fn() => auth()->user()?->hasRole('admin'))
@@ -366,6 +366,50 @@ class TurnoResource extends Resource
                             ])
                             ->columns(2),
                     ]),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('reporteCobertura')
+                    ->label('Cobertura mensual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->form([
+                        Select::make('year')
+                            ->label('Año')
+                            ->options(function () {
+                                $y = now()->year;
+                                return [
+                                    $y - 2 => (string) ($y - 2),
+                                    $y - 1 => (string) ($y - 1),
+                                    $y => (string) $y,
+                                ];
+                            })
+                            ->default(now()->year)
+                            ->required(),
+                        Select::make('month')
+                            ->label('Mes')
+                            ->options([
+                                1 => 'Enero',
+                                2 => 'Febrero',
+                                3 => 'Marzo',
+                                4 => 'Abril',
+                                5 => 'Mayo',
+                                6 => 'Junio',
+                                7 => 'Julio',
+                                8 => 'Agosto',
+                                9 => 'Septiembre',
+                                10 => 'Octubre',
+                                11 => 'Noviembre',
+                                12 => 'Diciembre',
+                            ])
+                            ->default(now()->month)
+                            ->required(),
+                    ])
+                    ->url(function (array $data) {
+                        $year = $data['year'] ?? now()->year;
+                        $month = $data['month'] ?? now()->month;
+                        return route('turnos.reporte.cobertura', ['year' => $year, 'month' => $month]);
+                    }, shouldOpenInNewTab: true)
+                    ->visible(fn() => auth()->user()?->can('view_any_turno')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

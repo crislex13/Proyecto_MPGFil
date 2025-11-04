@@ -25,6 +25,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Actions\Action;
 
 
 class PermisoClienteResource extends Resource
@@ -243,14 +244,34 @@ class PermisoClienteResource extends Resource
                             'aprobado' => 'Aprobado',
                             'rechazado' => 'Rechazado',
                         ]),
-                ])->actions([
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make()
-                        ->visible(fn() => auth()->user()?->hasRole('admin'))
-                        ->authorize(fn() => auth()->user()?->hasRole('admin'))
-                        ->requiresConfirmation()
-                        ->successNotificationTitle('Registro eliminado'),
-                ]);
+                ])
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make()
+                    ->visible(fn() => auth()->user()?->hasRole('admin'))
+                    ->authorize(fn() => auth()->user()?->hasRole('admin'))
+                    ->requiresConfirmation()
+                    ->successNotificationTitle('Registro eliminado'),
+            ])
+            ->headerActions([
+                Action::make('pdf_mensual_permisos_clientes')
+                    ->label('PDF mensual')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('success')
+                    ->form([
+                        DatePicker::make('fecha')
+                            ->label('Cualquier día del mes')
+                            ->default(now()->toDateString())
+                            ->required(),
+                    ])
+                    // 👇 Nada de ->action(...): abrimos directo por URL en nueva pestaña
+                    ->url(fn(array $data) => route('reportes.permisos.clientes.mensual', [
+                        'fecha' => $data['fecha'] ?? now()->toDateString(),
+                    ]), shouldOpenInNewTab: true),
+            ])
+            ->actions([
+                // ... tus acciones por fila ...
+            ]);
     }
 
     public static function getPages(): array

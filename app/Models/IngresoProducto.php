@@ -22,6 +22,7 @@ class IngresoProducto extends Model
         'precio_paquete',
         'observacion',
         'fecha',
+        'metodo_pago',
         'fecha_vencimiento',
         'registrado_por',
         'modificado_por',
