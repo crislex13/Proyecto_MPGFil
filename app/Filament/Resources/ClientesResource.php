@@ -28,6 +28,9 @@ use App\Models\User;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 use Filament\Notifications\Notification;
+use Filament\Forms\Components\Toggle;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ClientesImport;
 
 
 
@@ -260,17 +263,48 @@ class ClientesResource extends Resource
     {
         return $table
             ->headerActions([
-                Action::make('importarExcel')
-                    ->label('Importar Excel')
+                Tables\Actions\Action::make('importarExcel')
+                    ->label('Importar Excel/CSV')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('success')
-                    ->action(function () {
+                    ->form([
+                        FileUpload::make('excel')
+                            ->label('Archivo Excel/CSV')
+                            ->directory('imports')
+                            ->preserveFilenames()
+                            ->acceptedFileTypes([
+                                'text/csv',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->required(),
+                        Toggle::make('simulate')
+                            ->label('Simular (no guarda)')
+                            ->default(true),
+                    ])
+                    ->action(function (array $data) {
+                        $file = $data['excel'];
+                        $path = \Illuminate\Support\Facades\Storage::disk('public')->path($file);
+
+                        $import = new ClientesImport((bool) ($data['simulate'] ?? false));
+                        Excel::import($import, $path);
+
+                        $body = ($data['simulate'] ?? false)
+                            ? "Simulación OK. Registros válidos: " . ($import->inserted + $import->updated) . "."
+                            : "Importados: {$import->inserted}. Actualizados: {$import->updated}.";
+
+                        if (!empty($import->errors)) {
+                            $body .= "\nObservaciones:\n- " . implode("\n- ", array_slice($import->errors, 0, 5));
+                            if (count($import->errors) > 5)
+                                $body .= "\n(…y más)";
+                        }
+
                         Notification::make()
-                            ->title('Importado correctamente')
-                            ->body('Se procesó el archivo de clientes sin errores.')
+                            ->title('Importación de Clientes')
+                            ->body($body)
                             ->success()
                             ->send();
-                    }),
+                    })
             ])
             ->columns([
                 ImageColumn::make('foto_url')

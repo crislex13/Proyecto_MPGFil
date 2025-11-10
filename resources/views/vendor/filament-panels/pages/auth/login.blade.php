@@ -37,7 +37,7 @@
         }
     </style>
 
-    <x-filament-panels::form wire:submit.prevent="authenticate">
+    <x-filament-panels::form wire:submit.prevent="authenticate" method="POST" action="{{ url('/admin/login') }}">
         @csrf
 
         {{-- Banner de error de credenciales --}}

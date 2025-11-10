@@ -19,6 +19,13 @@ use App\Http\Controllers\ProductoFichaReportController;
 use App\Http\Controllers\VentaReportController;
 use App\Http\Controllers\TurnoReportController;
 use App\Http\Controllers\PagoPersonalReportController;
+use App\Http\Controllers\Auth\FallbackLoginController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Auth\Events\Lockout;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 Route::get('/', function () {
     return view('index');
@@ -161,9 +168,35 @@ Route::prefix('reportes/pagos-personal')->name('reportes.pagos.')->group(functio
     Route::get('/comprobante/{pago}', [PagoPersonalReportController::class, 'comprobante'])
         ->name('comprobante');
 });
-
+//comprobante de pago
 Route::get('/persona/mes', [PagoPersonalReportController::class, 'personaMes'])
     ->name('persona.mes'); // ?personal_id=ID&year=YYYY&month=MM
+
+    //Plantillas excel clientes y personal 
+    Route::get('/plantillas/clientes', function () {
+    $csv = implode(',', [
+        'nombre','apellido_paterno','apellido_materno','fecha_de_nacimiento','ci','telefono','correo','sexo'
+    ]) . "\n";
+    $csv .= "Juan,Pérez,García,15/04/1995,12345678,71234567,juan@example.com,masculino\n";
+
+    return response($csv, 200, [
+        'Content-Type' => 'text/csv; charset=UTF-8',
+        'Content-Disposition' => 'attachment; filename=plantilla_clientes.csv',
+    ]);
+})->name('plantillas.clientes');
+
+Route::get('/plantillas/personal', function () {
+    $csv = implode(',', [
+        'nombre','apellido_paterno','apellido_materno','ci','telefono','direccion',
+        'fecha_de_nacimiento','correo','cargo','fecha_contratacion','estado'
+    ]) . "\n";
+    $csv .= "María,Lopez,Rojas,87654321,72345678,Av. América 123,1990-01-20,maria@example.com,instructor,2023-03-01,activo\n";
+
+    return response($csv, 200, [
+        'Content-Type' => 'text/csv; charset=UTF-8',
+        'Content-Disposition' => 'attachment; filename=plantilla_personal.csv',
+    ]);
+})->name('plantillas.personal');
 
 Route::post('/admin/logout', function () {
     auth()->logout();
@@ -172,3 +205,7 @@ Route::post('/admin/logout', function () {
 
     return redirect('/admin/login');
 })->name('filament.admin.auth.logout');
+
+Route::post('/admin/login', [FallbackLoginController::class, 'store'])
+    ->name('admin.login.fallback')
+    ->middleware(['web','guest']);

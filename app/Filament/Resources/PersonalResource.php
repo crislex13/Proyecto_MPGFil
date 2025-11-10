@@ -26,6 +26,13 @@ use Carbon\Carbon;
 use App\Filament\Resources\PersonalResource\RelationManagers\PagosRelationManager;
 use Filament\Forms\Get;
 use Filament\Tables\Columns\TagsColumn;
+use App\Imports\PersonalImport;
+use Filament\Forms\Components\Toggle;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ClientesImport;
+use Filament\Notifications\Notification;
+
+
 
 
 class PersonalResource extends Resource
@@ -396,7 +403,7 @@ class PersonalResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                
+
                 Tables\Actions\DeleteAction::make()
                     ->visible(fn() => auth()->user()?->hasRole('admin'))
                     ->authorize(fn() => auth()->user()?->hasRole('admin'))
@@ -555,6 +562,53 @@ class PersonalResource extends Resource
                     ->visible(fn() => auth()->user()?->hasRole('admin')),
 
 
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('importarPersonal')
+                    ->label('Importar Excel/CSV (Personal)')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->modalHeading('Importar Excel/CSV (Personal)')
+                    ->form([
+                        FileUpload::make('excel')
+                            ->label('Archivo Excel/CSV')
+                            ->storeFiles(false) // nos da un UploadedFile sin guardarlo
+                            ->acceptedFileTypes([
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+                                'application/vnd.ms-excel', // .xls
+                                'text/csv', // .csv
+                            ])
+                            ->rules(['mimes:xlsx,xls,csv'])
+                            ->required(),
+                        Toggle::make('simulate')
+                            ->label('Simular (no guarda)')
+                            ->default(true),
+                    ])
+                    ->action(function (array $data) {
+                        /** @var \Illuminate\Http\UploadedFile $file */
+                        $file = $data['excel'];
+
+                        $import = new PersonalImport((bool) ($data['simulate'] ?? false));
+                        // Puedes pasar el UploadedFile directo a Excel::import:
+                        Excel::import($import, $file);
+
+                        $body = ($data['simulate'] ?? false)
+                            ? "Simulación OK. Registros válidos: " . ($import->inserted + $import->updated) . "."
+                            : "Importados: {$import->inserted}. Actualizados: {$import->updated}.";
+
+                        if (!empty($import->errors)) {
+                            $body .= "\nObservaciones:\n- " . implode("\n- ", array_slice($import->errors, 0, 5));
+                            if (count($import->errors) > 5) {
+                                $body .= "\n(…y más)";
+                            }
+                        }
+
+                        Notification::make()
+                            ->title('Importación de Personal')
+                            ->body($body)
+                            ->success()
+                            ->send();
+                    }),
             ]);
     }
 

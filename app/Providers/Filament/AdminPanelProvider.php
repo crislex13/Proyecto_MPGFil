@@ -21,6 +21,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Actions\Auth\CustomLogoutResponse;
 use Filament\Navigation\NavigationItem;
 use Filament\Navigation\NavigationGroup;
+use App\Http\Livewire\Auth\LoginCustom;
 
 
 class AdminPanelProvider extends PanelProvider
@@ -33,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook('panels::body.start', fn() => '<style>.fi-main { padding-left: 1rem; padding-right: 1rem; }</style>')
             ->id('admin')
             ->path('admin')
-            ->login(\App\Http\Livewire\Auth\LoginCustom::class)
+            ->login(LoginCustom::class)
             ->colors([
                 'primary' => Color::Amber,
             ])
