@@ -197,7 +197,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $maxIngDet = max(($ingresosMetodoDet?->pluck('cobrado')->toArray() ?? [0])); @endphp
+                @php $maxIngDet = $ingresosMetodoDet->max('cobrado') ?? 0; @endphp
                 @forelse ($ingresosMetodoDet as $r)
                     @php $pct = $maxIngDet ? round(($r['cobrado'] / $maxIngDet) * 100) : 0; @endphp
                     <tr>
@@ -236,7 +236,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $maxIngTot = max(($ingresosMetodoTot?->pluck('cobrado')->toArray() ?? [0])); @endphp
+                @php $maxIngTot = $ingresosMetodoTot->max('cobrado') ?? 0; @endphp
                 @forelse ($ingresosMetodoTot as $t)
                     @php $pct = $maxIngTot ? round(($t['cobrado'] / $maxIngTot) * 100) : 0; @endphp
                     <tr>
@@ -271,7 +271,7 @@
                 </tr>
             </thead>
             <tbody>
-                @php $maxEgr = max(($egresosMetodoDet?->pluck('monto')->toArray() ?? [0])); @endphp
+                @php $maxEgr = $egresosMetodoDet->max('monto') ?? 0; @endphp
                 @forelse ($egresosMetodoDet as $e)
                     @php $pct = $maxEgr ? round(($e['monto'] / $maxEgr) * 100) : 0; @endphp
                     <tr>
